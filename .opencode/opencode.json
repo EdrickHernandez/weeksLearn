@@ -1,0 +1,15 @@
+{
+    "$schema": "https://opencode.ai/config.json",
+    "agent": {
+    "bob10": {
+      "temperature": 0.1, 
+      "mode": "primary",
+      "prompt": "{/home/edrick/proyectos/10-weeks/01-proyecto/.opencode/agent/bob10.md}",
+      "permission": {
+        "edit": "deny",
+        "bash": "deny",
+        "read": "ask"
+        }
+     }
+    }
+}

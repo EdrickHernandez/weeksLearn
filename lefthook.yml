@@ -1,0 +1,16 @@
+# Hooks de git: rápidos y enfocados. CI ejecuta la suite completa.
+pre-commit:
+  commands:
+    lint:
+      glob: '*.{js,mjs,ts,tsx}'
+      run: pnpm exec eslint --fix --no-warn-ignored {staged_files}
+      stage_fixed: true
+    format:
+      glob: '*.{js,mjs,ts,tsx,json,css,md,yaml,yml}'
+      run: pnpm exec prettier --write --ignore-unknown {staged_files}
+      stage_fixed: true
+
+pre-push:
+  commands:
+    typecheck:
+      run: pnpm typecheck
