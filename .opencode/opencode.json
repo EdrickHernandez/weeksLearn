@@ -11,5 +11,16 @@
         "read": "ask"
         }
      }
+    },
+    "mcp": {
+      "tracker": {
+        "type": "local",
+        "command": ["node", "/home/edrick/proyectos/10-weeks/MCP-tracker/dist/index.js"],
+        "environment": {
+          "TRACKER_DB": "/home/edrick/proyectos/10-weeks/MCP-tracker/data/tracker.db",
+          "ROADMAP_PATH": "/home/edrick/proyectos/10-weeks/10-week-full-stack-engineering-roadmap.md"
+        },
+        "enabled": true
+      }
     }
 }
