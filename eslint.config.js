@@ -13,6 +13,7 @@ export default [
       'dist',
       '.output',
       '.tanstack',
+      '.vercel',
       'node_modules',
       'coverage',
       'src/routeTree.gen.ts',
