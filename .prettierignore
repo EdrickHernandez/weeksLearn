@@ -3,6 +3,8 @@ pnpm-lock.yaml
 dist
 coverage
 .tanstack
+.vercel
+supabase/.temp
 src/routeTree.gen.ts
 .opencode
 .env
