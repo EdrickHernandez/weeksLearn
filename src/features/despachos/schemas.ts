@@ -8,7 +8,7 @@ import { z } from 'zod'
 /** Dominios cerrados del negocio (CHECK constraints en PostgreSQL). */
 export const tipoDocumentoSchema = z.enum(['factura', 'boleta'])
 export const tipoEmbalajeSchema = z.enum(['caja', 'pallet', 'alusado'])
-export const vehiculoSchema = z.enum(['moto', 'furgon', 'camion', 'otro'])
+export const vehiculoSchema = z.enum(['moto', 'furgon', 'camion', 'camioneta', 'otro'])
 
 export type TipoDocumento = z.infer<typeof tipoDocumentoSchema>
 export type TipoEmbalaje = z.infer<typeof tipoEmbalajeSchema>
@@ -52,14 +52,12 @@ const despachoInputBase = z.object({
 })
 
 /**
- * Regla de negocio: la cantidad de pesos debe igualar a los bultos, y solo
- * un pallet puede tener bultos de 0 kg; una caja, no.
- * Validación CRUZADA (tipoEmbalaje + bultos + pesosKg) → superRefine.
+ * Regla de negocio: la cantidad de pesos debe igualar a los bultos.
+ * Peso 0 está permitido para CUALQUIER embalaje: significa "sin pesar"
+ * (convención del historial real del negocio desde 2020). Los negativos
+ * los rechaza el propio elemento del array (min(0)).
  */
-function validarBultosSegunEmbalaje(
-  data: { tipoEmbalaje: TipoEmbalaje; bultos: number; pesosKg: number[] },
-  ctx: z.RefinementCtx,
-) {
+function validarBultos(data: { bultos: number; pesosKg: number[] }, ctx: z.RefinementCtx) {
   if (data.pesosKg.length !== data.bultos) {
     ctx.addIssue({
       code: 'custom',
@@ -67,26 +65,15 @@ function validarBultosSegunEmbalaje(
       message: `Hay ${data.bultos} bultos pero ${data.pesosKg.length} pesos registrados`,
     })
   }
-
-  data.pesosKg.forEach((peso, indice) => {
-    // Solo el pallet puede pesar 0 kg; caja y alusado, no.
-    if (data.tipoEmbalaje !== 'pallet' && peso <= 0) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['pesosKg', indice],
-        message: `Un bulto de tipo ${data.tipoEmbalaje} debe pesar más de 0 kg (solo un pallet puede pesar 0)`,
-      })
-    }
-  })
 }
 
-export const despachoInputSchema = despachoInputBase.superRefine(validarBultosSegunEmbalaje)
+export const despachoInputSchema = despachoInputBase.superRefine(validarBultos)
 
 export const createDespachoInputSchema = despachoInputSchema
 
 export const updateDespachoInputSchema = despachoInputBase
   .extend({ id: z.uuid('Id de despacho inválido') })
-  .superRefine(validarBultosSegunEmbalaje)
+  .superRefine(validarBultos)
 
 export const despachoIdSchema = z.object({
   id: z.uuid('Id de despacho inválido'),
@@ -193,3 +180,10 @@ export const serviceErrorSchema = z.object({
 export type ServiceError = z.infer<typeof serviceErrorSchema>
 
 export type DespachoResult<T> = { ok: true; data: T } | { ok: false; error: ServiceError }
+
+/**
+ * Límite del listado principal: el Server Function entrega solo los N más
+ * recientes (payload acotado para producción con 10.5k filas históricas).
+ * El filtrado/paginación server-side completa llega con la Semana 2.
+ */
+export const DESPACHOS_LIMITE_LISTADO = 200
