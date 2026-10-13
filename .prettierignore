@@ -5,6 +5,7 @@ coverage
 .tanstack
 .vercel
 supabase/.temp
+*.csv
 src/routeTree.gen.ts
 .opencode
 .env
