@@ -1,0 +1,28 @@
+flowchart LR
+    subgraph NAVEGADOR["Navegador (azul)"]
+        UI["DespachoForm / DespachosTable<br/>validacion Zod por campo"]
+        Q["TanStack Query<br/>cache - invalidacion - retries"]
+    end
+
+    subgraph SERVIDOR["Servidor - FRONTERA DE CONFIANZA (verde, borde rojo)"]
+        SF["Server Functions<br/>functions.ts<br/>.validator Zod + getUser"]
+        DOM["service.ts - logica pura<br/>normaliza comuna/transporte"]
+        REPO["repo<br/>server/services/despachos.ts"]
+    end
+
+    subgraph SUPABASE["Supabase (morado)"]
+        AUTH["Supabase Auth<br/>usuario + cookie JWT"]
+        PG["PostgreSQL<br/>despachos + despacho_bultos<br/>GRANTs - RLS own-row"]
+    end
+
+    UI -->|mutation RPC same-origin POST payload validado| Q
+    Q -->|createDespachoFn| SF
+    SF -->|getUser| AUTH
+    AUTH -->|user.id| SF
+    SF -->|delega| DOM
+    DOM -->|values normalizados| REPO
+    REPO -->|INSERT con cookies del request<br/>grants OK y luego RLS OK| PG
+    PG -.->|fila guardada + id| REPO
+    REPO -->|DespachoResult tipado| SF
+    SF -->|respuesta| Q
+    Q -->|invalida queryKey refetch + re-render| UI

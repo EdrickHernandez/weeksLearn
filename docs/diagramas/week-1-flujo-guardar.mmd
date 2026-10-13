@@ -1,0 +1,31 @@
+sequenceDiagram
+    actor U as Usuario
+    participant F as DespachoForm
+    participant Q as TanStack Query
+    participant SF as createDespachoFn
+    participant SVC as service.ts
+    participant R as repo
+    participant PG as Supabase Auth + PostgreSQL
+
+    U->>F: llena el form y aprieta Guardar
+    F->>F: valida con Zod (si falla: error por campo, no sale del browser)
+    F->>Q: mutation.mutate(input)
+    Q->>SF: RPC same-origin POST
+    Note over SF: FRONTERA DE CONFIANZA
+    SF->>SF: .validator (Zod, segunda pasada)
+    SF->>PG: getUser() lee cookie de sesion
+    PG-->>SF: user.id (identidad)
+    SF->>SVC: buildDespachoInsert(input, user.id)
+    SVC-->>SF: values normalizados
+    SF->>R: insertDespacho + insertBultos
+    R->>PG: INSERT como rol authenticated
+    Note over PG: capa 1 GRANTs OK - capa 2 RLS auth.uid()=user_id OK
+    PG-->>R: filas con id
+    R-->>SF: registro completo
+    SF-->>Q: DespachoResult ok
+    Q->>Q: onSuccess invalidateQueries
+    Note over Q: cache stale
+    Q->>SF: refetch listDespachosFn
+    SF-->>Q: listado nuevo
+    Q-->>F: re-render
+    U->>F: ve el despacho en la tabla

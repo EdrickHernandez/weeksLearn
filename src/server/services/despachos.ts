@@ -1,10 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type {
-  DespachoBultoValues,
-  DespachoConBultosRow,
-  DespachoInsertValues,
-  DespachoRow,
-  DespachoUpdateValues,
+import {
+  DESPACHOS_LIMITE_LISTADO,
+  type DespachoBultoValues,
+  type DespachoConBultosRow,
+  type DespachoInsertValues,
+  type DespachoRow,
+  type DespachoUpdateValues,
 } from '~/features/despachos/schemas'
 import { parseDespachoConBultos, parseDespachoRow } from '~/features/despachos/service'
 
@@ -28,6 +29,9 @@ export async function listDespachos(db: Db, userId: string): Promise<DespachoCon
     .select(CON_BULTOS)
     .eq('user_id', userId)
     .order('despachado_at', { ascending: false })
+    // Payload acotado: el listado no viaja completo a través de la frontera
+    // (con 10.5k filas un SELECT * sin límite asfixia el Server Function).
+    .limit(DESPACHOS_LIMITE_LISTADO)
 
   if (error) throw new Error(`No se pudieron listar los despachos: ${error.message}`)
   return (data ?? []).map(parseDespachoConBultos)

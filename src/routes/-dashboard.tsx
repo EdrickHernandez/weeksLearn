@@ -4,6 +4,7 @@ import { signOutFn } from '~/features/auth/functions'
 import { useSessionQuery } from '~/features/auth/queries/use-session'
 import { DespachoApiError } from '~/features/despachos/unwrap'
 import type { Despacho, DespachoInput } from '~/features/despachos/schemas'
+import { DESPACHOS_LIMITE_LISTADO } from '~/features/despachos/schemas'
 import { useCreateDespachoMutation } from '~/features/despachos/mutations/use-create-despacho'
 import { useDeleteDespachoMutation } from '~/features/despachos/mutations/use-delete-despacho'
 import { useUpdateDespachoMutation } from '~/features/despachos/mutations/use-update-despacho'
@@ -142,6 +143,13 @@ export function DashboardPage() {
               ? `${filtrados.length} de ${despachos.length} despachos`
               : `${despachos.length} despachos`}
           </p>
+
+          {despachos.length === DESPACHOS_LIMITE_LISTADO ? (
+            <p className="muted">
+              Mostrando los {DESPACHOS_LIMITE_LISTADO} despachos más recientes — usa el filtro para
+              acotar la búsqueda.
+            </p>
+          ) : null}
 
           {filtrados.length === 0 ? (
             <p className="card" role="status">

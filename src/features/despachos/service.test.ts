@@ -288,6 +288,9 @@ describe('schemas', () => {
       false,
     )
     expect(despachoInputSchema.safeParse({ ...inputBase, vehiculo: 'avion' }).success).toBe(false)
+    expect(despachoInputSchema.safeParse({ ...inputBase, vehiculo: 'camioneta' }).success).toBe(
+      true,
+    )
   })
 
   it('la cantidad de pesos debe igualar a los bultos', () => {
@@ -295,7 +298,14 @@ describe('schemas', () => {
     expect(despachoInputSchema.safeParse({ ...inputBase, pesosKg: [5, 5, 2.5] }).success).toBe(true)
   })
 
-  it('regla pallet/caja/alusado por bulto: solo el pallet puede pesar 0 kg', () => {
+  it('peso 0 = "sin pesar": válido para cualquier embalaje; negativos, no', () => {
+    expect(
+      despachoInputSchema.safeParse({
+        ...inputBase,
+        tipoEmbalaje: 'caja',
+        pesosKg: [5, 0, 2.5],
+      }).success,
+    ).toBe(true)
     expect(
       despachoInputSchema.safeParse({
         ...inputBase,
@@ -306,21 +316,14 @@ describe('schemas', () => {
     expect(
       despachoInputSchema.safeParse({
         ...inputBase,
-        tipoEmbalaje: 'caja',
-        pesosKg: [5, 0, 2.5],
-      }).success,
-    ).toBe(false)
-    expect(
-      despachoInputSchema.safeParse({
-        ...inputBase,
-        tipoEmbalaje: 'caja',
-        pesosKg: [5, 0.01, 2.5],
+        tipoEmbalaje: 'alusado',
+        pesosKg: [0, 3, 0],
       }).success,
     ).toBe(true)
     expect(
       despachoInputSchema.safeParse({
         ...inputBase,
-        tipoEmbalaje: 'pallet',
+        tipoEmbalaje: 'caja',
         pesosKg: [-1, 0, 0],
       }).success,
     ).toBe(false)
@@ -340,10 +343,10 @@ describe('schemas', () => {
         tipoEmbalaje: 'alusado',
         pesosKg: [3, 0, 5],
       }).success,
-    ).toBe(false)
+    ).toBe(true)
   })
 
-  it('el update comparte las reglas condicionales', () => {
+  it('el update comparte la regla de cantidad peso=bultos', () => {
     const id = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
     expect(
       updateDespachoInputSchema.safeParse({
@@ -358,6 +361,14 @@ describe('schemas', () => {
         ...inputBase,
         tipoEmbalaje: 'caja',
         pesosKg: [5, 0, 2.5],
+        id,
+      }).success,
+    ).toBe(true)
+    expect(
+      updateDespachoInputSchema.safeParse({
+        ...inputBase,
+        tipoEmbalaje: 'caja',
+        pesosKg: [5, 0], // 2 pesos para 3 bultos
         id,
       }).success,
     ).toBe(false)
