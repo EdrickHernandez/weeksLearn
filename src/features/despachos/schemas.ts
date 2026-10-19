@@ -9,7 +9,6 @@ import { z } from 'zod'
 export const tipoDocumentoSchema = z.enum(['factura', 'boleta'])
 export const tipoEmbalajeSchema = z.enum(['caja', 'pallet', 'alusado'])
 export const vehiculoSchema = z.enum(['moto', 'furgon', 'camion', 'camioneta', 'otro'])
-
 export type TipoDocumento = z.infer<typeof tipoDocumentoSchema>
 export type TipoEmbalaje = z.infer<typeof tipoEmbalajeSchema>
 export type Vehiculo = z.infer<typeof vehiculoSchema>
