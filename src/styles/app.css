@@ -74,6 +74,130 @@ input {
   color: #b91c1c;
 }
 
+/* --- Semana 1: Tracker de Despachos --- */
+
+.session-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.session-bar p {
+  margin: 0;
+}
+
+.toolbar {
+  display: flex;
+  gap: 0.6rem;
+  margin: 1rem 0;
+}
+
+.toolbar input {
+  flex: 1;
+  max-width: none;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid #d3d8de;
+  border-radius: 10px;
+  background: #fff;
+}
+
+table.despachos {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.9rem;
+}
+
+table.despachos th,
+table.despachos td {
+  text-align: left;
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+table.despachos th {
+  color: #6b7280;
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+table.despachos td.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem 1rem;
+  margin: 0.75rem 0;
+}
+
+.form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: #374151;
+}
+
+.form-grid input,
+.form-grid select {
+  max-width: none;
+}
+
+.field-error {
+  color: #b91c1c;
+  font-size: 0.78rem;
+}
+
+.row-actions {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: #2563eb;
+}
+
+.btn-ghost:hover {
+  background: #eff6ff;
+}
+
+.btn-danger {
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+
+.btn-danger:hover {
+  background: #991b1b;
+}
+
+.btn-danger-text {
+  color: #b91c1c;
+}
+
+.badge-warn {
+  margin-left: 0.3rem;
+  cursor: help;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2.5rem 1rem;
+}
+
+.muted[aria-live] {
+  margin: 0.5rem 0.25rem;
+}
+
 @media (prefers-color-scheme: dark) {
   body {
     color: #e5e7eb;
@@ -89,5 +213,42 @@ input {
     background: #111827;
     border-color: #374151;
     color: #e5e7eb;
+  }
+
+  select {
+    background: #111827;
+    border: 1px solid #374151;
+    border-radius: 8px;
+    color: #e5e7eb;
+    font: inherit;
+    padding: 0.4rem 0.6rem;
+    width: 100%;
+    max-width: 320px;
+  }
+
+  .table-wrap {
+    background: #1f2937;
+    border-color: #374151;
+  }
+
+  table.despachos th,
+  table.despachos td {
+    border-bottom-color: #374151;
+  }
+
+  .form-grid label {
+    color: #d1d5db;
+  }
+
+  .btn-ghost {
+    color: #93c5fd;
+  }
+
+  .btn-ghost:hover {
+    background: #1e3a8a33;
+  }
+
+  .btn-danger-text {
+    color: #fca5a5;
   }
 }

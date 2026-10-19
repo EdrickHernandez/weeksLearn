@@ -6,8 +6,8 @@
       "mode": "primary",
       "prompt": "{/home/edrick/proyectos/10-weeks/01-proyecto/.opencode/agent/bob10.md}",
       "permission": {
-        "edit": "deny",
-        "bash": "deny",
+        "edit": "allow",
+        "bash": "allow",
         "read": "ask"
         }
      }

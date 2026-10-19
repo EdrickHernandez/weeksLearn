@@ -10,3 +10,5 @@ dist
 coverage
 *.tsbuildinfo
 .DS_Store
+*.csv
+supabase/.temp
