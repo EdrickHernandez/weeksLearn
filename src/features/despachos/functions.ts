@@ -53,7 +53,7 @@ export const listDespachosFn = createServerFn({ method: 'GET' }).handler(
 
     try {
       const db = getSupabaseServerClient()
-      const rows = await repo.listDespachos(db, user.id)
+      const rows = await repo.listDespachos(db)
       return { ok: true, data: rows.map(toDespacho) }
     } catch (error) {
       console.error('[despachos] list falló:', error)

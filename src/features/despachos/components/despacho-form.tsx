@@ -16,7 +16,6 @@ const TIPOS_EMBALAJE = [
 const VEHICULOS = [
   { value: 'moto', label: 'Moto' },
   { value: 'furgon', label: 'Furgón' },
-  { value: 'furgon', label: 'Camioneta' },
   { value: 'camion', label: 'Camión' },
   { value: 'camioneta', label: 'Camioneta' },
   { value: 'otro', label: 'Otro' },
