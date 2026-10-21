@@ -12,9 +12,10 @@ import { parseDespachoConBultos, parseDespachoRow } from '~/features/despachos/s
 /**
  * Acceso a datos de despachos y sus bultos (SOLO-SERVIDOR).
  * Único consumidor permitido: src/features/despachos/functions.ts.
- * Toda consulta de despachos filtra por user_id explícito (defensa en
- * profundidad además de RLS); en despacho_bultos la autorización la hace
- * la política EXISTS contra el padre (la tabla hija no tiene user_id).
+ * Lecturas: la VISIBILIDAD de filas la gobierna la policy RLS
+ * (todos los roles conocidos leen; el código no filtra por user_id).
+ * Escrituras: doble cerco — RLS (admin + own-row) y filtro explícito
+ * de user_id en el código (misma regla, defensa en profundidad).
  */
 
 type Db = SupabaseClient
@@ -23,11 +24,10 @@ type Db = SupabaseClient
  *  Alias "bultos_detalle" para no chocar con la columna "bultos" del despacho. */
 const CON_BULTOS = '*, bultos_detalle:despacho_bultos(numero, peso_kg)'
 
-export async function listDespachos(db: Db, userId: string): Promise<DespachoConBultosRow[]> {
+export async function listDespachos(db: Db): Promise<DespachoConBultosRow[]> {
   const { data, error } = await db
     .from('despachos')
     .select(CON_BULTOS)
-    .eq('user_id', userId)
     .order('despachado_at', { ascending: false })
     // Payload acotado: el listado no viaja completo a través de la frontera
     // (con 10.5k filas un SELECT * sin límite asfixia el Server Function).
@@ -42,12 +42,7 @@ export async function getDespacho(
   userId: string,
   id: string,
 ): Promise<DespachoConBultosRow | null> {
-  const { data, error } = await db
-    .from('despachos')
-    .select(CON_BULTOS)
-    .eq('id', id)
-    .eq('user_id', userId)
-    .maybeSingle()
+  const { data, error } = await db.from('despachos').select(CON_BULTOS).eq('id', id).maybeSingle()
 
   if (error) throw new Error(`No se pudo obtener el despacho: ${error.message}`)
   return data ? parseDespachoConBultos(data) : null
