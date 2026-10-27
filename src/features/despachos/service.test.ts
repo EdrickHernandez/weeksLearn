@@ -3,13 +3,16 @@ import {
   buildDespachoBultosValues,
   buildDespachoInsert,
   buildDespachoUpdate,
+  despachosDelDia,
   extractTransporteSuggestions,
+  formatoFechaJornada,
   formatClp,
   normalizeComuna,
   normalizeTelefono,
   normalizeTransporte,
   searchDespachos,
   sumBultos,
+  sumValorClp,
   titleCase,
   toDespacho,
 } from './service'
@@ -400,5 +403,47 @@ describe('schemas', () => {
     delete minimo.direccion
     delete minimo.telefono
     expect(despachoInputSchema.safeParse(minimo).success).toBe(true)
+  })
+})
+
+describe('la jornada', () => {
+  // Fechas construidas en hora LOCAL del entorno: los tests no dependen de
+  // la zona horaria del CI. Jornada de referencia: 23-oct-2026, 14:30 local.
+  const ahora = new Date(2026, 9, 23, 14, 30)
+  const deHoy = (id: string, hora: number, minuto: number, valorClp = 10_000) =>
+    fixDespacho({ id, valorClp, despachadoAt: new Date(2026, 9, 23, hora, minuto).toISOString() })
+  const deOtroDia = (id: string, fecha: Date) =>
+    fixDespacho({ id, despachadoAt: fecha.toISOString() })
+
+  it('deja solo los despachos del día, del más reciente al más antiguo', () => {
+    const dia = despachosDelDia(
+      [
+        deOtroDia('ayer', new Date(2026, 9, 22, 23, 59)),
+        deHoy('hoy-915', 9, 15),
+        deOtroDia('otro-mes', new Date(2026, 8, 23, 12, 0)),
+        deHoy('hoy-1400', 14, 0, 20_000),
+      ],
+      ahora,
+    )
+    expect(dia.map((despacho) => despacho.id)).toEqual(['hoy-1400', 'hoy-915'])
+  })
+
+  it('el borde de medianoche local separa las jornadas', () => {
+    const recienMedianoche = new Date(2026, 9, 23, 0, 0, 1)
+    const antesDeMedianoche = new Date(2026, 9, 22, 23, 59, 59)
+    expect(despachosDelDia([deOtroDia('ayer-tarde', antesDeMedianoche)], recienMedianoche)).toEqual(
+      [],
+    )
+  })
+
+  it('sumValorClp suma los valores del día', () => {
+    expect(sumValorClp([deHoy('a', 9, 15), deHoy('b', 14, 0, 20_000)])).toBe(30_000)
+    expect(sumValorClp([])).toBe(0)
+  })
+
+  it('formatoFechaJornada nombra la fecha en es-CL, capitalizada', () => {
+    const texto = formatoFechaJornada(ahora)
+    expect(texto).toContain('23 de octubre')
+    expect(texto.charAt(0)).toBe(texto.charAt(0).toUpperCase())
   })
 })

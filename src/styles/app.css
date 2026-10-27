@@ -1,5 +1,11 @@
+@import './tokens.css';
+
+/* ============================================================
+   BASE — el piso y la tinta
+   ============================================================ */
+
 :root {
-  color-scheme: light dark;
+  color-scheme: light; /* paleta bodega pensada en claro; dark = redefinición futura de tokens */
 }
 
 * {
@@ -8,43 +14,35 @@
 
 body {
   margin: 0;
-  font-family:
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
-  line-height: 1.6;
-  color: #1f2933;
-  background: #f8f9fa;
+  font-family: var(--fuente-base);
+  font-size: var(--texto-2);
+  line-height: var(--altura-lectura);
+  color: var(--tinta);
+  background: var(--piso);
 }
 
-.container {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 2rem 1.25rem;
+/* Piso de calidad: quien navega con teclado siempre ve dónde está. */
+:focus-visible {
+  outline: 2px solid var(--foco);
+  outline-offset: 2px;
 }
 
-.card {
-  border: 1px solid #d3d8de;
-  border-radius: 10px;
-  padding: 1rem 1.25rem;
-  margin: 1rem 0;
-  background: #fff;
-}
+/* ============================================================
+   BOTONES — la señal amarilla lleva texto tinta (contraste 10:1)
+   ============================================================ */
 
 button {
   font: inherit;
   padding: 0.4rem 1rem;
-  border: 1px solid #2563eb;
-  border-radius: 8px;
-  background: #2563eb;
-  color: #fff;
+  border: 1px solid var(--senal);
+  border-radius: var(--radio);
+  background: var(--senal);
+  color: var(--tinta);
   cursor: pointer;
 }
 
 button:hover {
-  background: #1d4ed8;
+  background: var(--senal-hover);
 }
 
 button:disabled {
@@ -52,35 +50,87 @@ button:disabled {
   cursor: not-allowed;
 }
 
-input {
+.btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--tinta);
+}
+
+.btn-ghost:hover {
+  background: var(--papel-hover);
+}
+
+.btn-danger {
+  background: var(--peligro);
+  border-color: var(--peligro);
+  color: var(--papel);
+}
+
+.btn-danger:hover {
+  background: var(--peligro);
+  filter: brightness(0.92);
+}
+
+.btn-danger-text {
+  color: var(--peligro);
+}
+
+/* ============================================================
+   ENTRADAS — papel con borde de regla
+   ============================================================ */
+
+input,
+select {
   font: inherit;
   padding: 0.4rem 0.6rem;
-  border: 1px solid #d3d8de;
-  border-radius: 8px;
+  border: 1px solid var(--linea);
+  border-radius: var(--radio);
+  background: var(--papel);
+  color: var(--tinta);
   width: 100%;
   max-width: 320px;
 }
 
-.muted {
-  color: #6b7280;
-  font-size: 0.9rem;
+/* ============================================================
+   LAYOUT — desktop primero (decisión del brief)
+   ============================================================ */
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: var(--esp-8) var(--esp-4);
 }
 
-.status-ok {
-  color: #15803d;
+.card {
+  border: 1px solid var(--linea);
+  border-radius: var(--radio);
+  padding: var(--esp-4) var(--esp-6);
+  margin: var(--esp-4) 0;
+  background: var(--papel);
+}
+
+/* ============================================================
+   TEXTO AUXILIAR
+   ============================================================ */
+
+.muted {
+  color: var(--tinta-tenue);
+  font-size: var(--texto-1);
 }
 
 .status-error {
-  color: #b91c1c;
+  color: var(--peligro);
 }
 
-/* --- Semana 1: Tracker de Despachos --- */
+/* ============================================================
+   SEMANA 1: TRACKER DE DESPACHOS
+   ============================================================ */
 
 .session-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: var(--esp-4);
 }
 
 .session-bar p {
@@ -89,8 +139,8 @@ input {
 
 .toolbar {
   display: flex;
-  gap: 0.6rem;
-  margin: 1rem 0;
+  gap: var(--esp-3);
+  margin: var(--esp-4) 0;
 }
 
 .toolbar input {
@@ -98,52 +148,62 @@ input {
   max-width: none;
 }
 
+/* --- Tabla: el listado de documentos --- */
+
 .table-wrap {
   overflow-x: auto;
-  border: 1px solid #d3d8de;
-  border-radius: 10px;
-  background: #fff;
+  border: 1px solid var(--linea);
+  border-radius: var(--radio);
+  background: var(--papel);
 }
 
 table.despachos {
   border-collapse: collapse;
   width: 100%;
-  font-size: 0.9rem;
+  font-size: var(
+    --texto-2
+  ); /* la tabla manda al tamaño base: es el contenido principal del historial */
+  line-height: var(--altura-densa);
 }
 
 table.despachos th,
 table.despachos td {
   text-align: left;
-  padding: 0.45rem 0.6rem;
-  border-bottom: 1px solid #e5e7eb;
+  padding: var(--esp-2) var(--esp-3);
+  border-bottom: 1px solid var(--linea);
   white-space: nowrap;
 }
 
+/* Encabezados en sentence case: las mayúsculas sostenidas son un
+   adorno genérico que la guía de diseño pide evitar. La jerarquía
+   la da el peso y el tono, no las capitales. */
 table.despachos th {
-  color: #6b7280;
+  color: var(--tinta-tenue);
   font-weight: 600;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
 }
 
+/* Los valores numéricos van estampados: mono tabular, dígitos que
+   no bailan entre filas. */
 table.despachos td.num {
+  font-family: var(--fuente-datos);
   font-variant-numeric: tabular-nums;
 }
+
+/* --- Formulario --- */
 
 .form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 0.75rem 1rem;
-  margin: 0.75rem 0;
+  gap: var(--esp-3) var(--esp-4);
+  margin: var(--esp-3) 0;
 }
 
 .form-grid label {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.85rem;
-  color: #374151;
+  gap: var(--esp-1);
+  font-size: var(--texto-1);
+  color: var(--tinta);
 }
 
 .form-grid input,
@@ -152,103 +212,189 @@ table.despachos td.num {
 }
 
 .field-error {
-  color: #b91c1c;
-  font-size: 0.78rem;
+  color: var(--peligro);
+  font-size: var(--texto-1);
 }
+
+/* --- Acciones de fila --- */
 
 .row-actions {
   display: inline-flex;
-  gap: 0.4rem;
+  gap: var(--esp-2);
   align-items: center;
 }
 
-.btn-ghost {
-  background: transparent;
-  color: #2563eb;
-}
-
-.btn-ghost:hover {
-  background: #eff6ff;
-}
-
-.btn-danger {
-  background: #b91c1c;
-  border-color: #b91c1c;
-}
-
-.btn-danger:hover {
-  background: #991b1b;
-}
-
-.btn-danger-text {
-  color: #b91c1c;
-}
+/* --- Badge de caución: comuna fuera del catálogo --- */
 
 .badge-warn {
-  margin-left: 0.3rem;
+  margin-left: var(--esp-1);
   cursor: help;
+  color: var(--alerta);
 }
 
 .empty-state {
   text-align: center;
-  padding: 2.5rem 1rem;
+  padding: var(--esp-8) var(--esp-4);
 }
 
 .muted[aria-live] {
-  margin: 0.5rem 0.25rem;
+  margin: var(--esp-2) var(--esp-1);
 }
 
-@media (prefers-color-scheme: dark) {
-  body {
-    color: #e5e7eb;
-    background: #111827;
-  }
+/* ============================================================
+   LA JORNADA — el héroe del dashboard
+   ============================================================ */
 
-  .card {
-    background: #1f2937;
-    border-color: #374151;
-  }
+.jornada {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--esp-4);
+  margin: var(--esp-6) 0 var(--esp-4);
+  padding-bottom: var(--esp-4);
+  border-bottom: 1px solid var(--linea);
+}
 
-  input {
-    background: #111827;
-    border-color: #374151;
-    color: #e5e7eb;
-  }
+.jornada-fecha {
+  margin: 0;
+  font-size: var(--texto-4);
+  font-weight: 700;
+  line-height: var(--altura-densa);
+}
 
-  select {
-    background: #111827;
-    border: 1px solid #374151;
-    border-radius: 8px;
-    color: #e5e7eb;
-    font: inherit;
-    padding: 0.4rem 0.6rem;
-    width: 100%;
-    max-width: 320px;
-  }
+.jornada-resumen {
+  margin: var(--esp-1) 0 0;
+  color: var(--tinta-tenue);
+}
 
-  .table-wrap {
-    background: #1f2937;
-    border-color: #374151;
-  }
+/* La LISTA define las columnas una sola vez; cada fila las hereda con
+   subgrid → cabecera y filas alinean siempre, tengan el contenido que
+   tengan (grids independientes auto-miden cada fila por separado y se
+   desalinean entre sí). */
+.jornada-lista {
+  display: grid;
+  grid-template-columns: auto auto auto minmax(0, 1.2fr) minmax(0, 1fr) auto auto auto minmax(
+      0,
+      1.2fr
+    );
+  gap: 0 var(--esp-3);
+  background: var(--papel);
+  border: 1px solid var(--linea);
+}
 
-  table.despachos th,
-  table.despachos td {
-    border-bottom-color: #374151;
-  }
+.fila-despacho {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: baseline;
+  border-bottom: 1px solid var(--linea);
+  position: relative; /* ancla del overlay de acciones */
+}
 
-  .form-grid label {
-    color: #d1d5db;
-  }
+/* Sin min-width:0 los hijos de grid no encogen bajo su contenido y el
+   ellipsis nunca aparece. El padding vive en las CELDAS, no en la fila:
+   un padding horizontal en la fila desalinearía las pistas del subgrid. */
+.fila-despacho > * {
+  min-width: 0;
+  padding: var(--esp-2) 0;
+}
 
-  .btn-ghost {
-    color: #93c5fd;
-  }
+.fila-despacho > :first-child {
+  padding-left: var(--esp-3);
+}
 
-  .btn-ghost:hover {
-    background: #1e3a8a33;
-  }
+.fila-despacho > :last-child {
+  padding-right: var(--esp-3);
+}
 
-  .btn-danger-text {
-    color: #fca5a5;
+.fila-despacho .trunc {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fila-despacho:last-child {
+  border-bottom: none;
+}
+
+.fila-despacho:hover {
+  background: var(--papel-hover);
+}
+
+.fila-cabecera {
+  color: var(--tinta-tenue);
+  font-size: var(--texto-1);
+}
+
+/* Acciones en overlay: son la COLA de la fila, no una tarjeta flotante.
+   Mismo fondo que la fila en hover, altura completa, pegadas al borde
+   derecho, y entran deslizando desde afuera (derecha → izquierda). En
+   reposo invisibles Y no-clickeables (pointer-events none); hover o foco
+   de teclado las encienden; touch siempre las muestra. */
+.fila-despacho .row-actions {
+  position: absolute;
+  inset: 0 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--esp-2);
+  padding: 0 var(--esp-3);
+  background: var(--papel-hover);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(100%);
+  transition:
+    opacity 150ms ease,
+    transform 150ms ease;
+}
+
+.fila-despacho:hover .row-actions,
+.fila-despacho:focus-within .row-actions {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+}
+
+/* Feedback visible del ghost DENTRO del panel: su hover normal usa
+   papel-hover, que ya es el fondo del panel — sin esto, no se vería. */
+.fila-despacho .row-actions .btn-ghost:hover {
+  background: var(--papel);
+}
+
+@media (hover: none) {
+  .fila-despacho .row-actions {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(0);
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fila-despacho .row-actions {
+    transition: none;
+  }
+}
+
+.fila-doc {
+  font-family: var(--fuente-datos);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.fila-num {
+  font-family: var(--fuente-datos);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.fila-hora {
+  font-family: var(--fuente-datos);
+  font-variant-numeric: tabular-nums;
+  color: var(--tinta-tenue);
+  white-space: nowrap;
+}
+
+/* --- Búsqueda: el historial solo existe cuando lo invocas --- */
+
+.busqueda {
+  margin-top: var(--esp-6);
 }

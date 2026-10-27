@@ -9,9 +9,17 @@ import { useCreateDespachoMutation } from '~/features/despachos/mutations/use-cr
 import { useDeleteDespachoMutation } from '~/features/despachos/mutations/use-delete-despacho'
 import { useUpdateDespachoMutation } from '~/features/despachos/mutations/use-update-despacho'
 import { DespachoForm } from '~/features/despachos/components/despacho-form'
+import { DespachoFila } from '~/features/despachos/components/despacho-fila'
 import { DespachosTable } from '~/features/despachos/components/despachos-table'
 import { useDespachosQuery } from '~/features/despachos/queries/use-despachos'
-import { extractTransporteSuggestions, searchDespachos } from '~/features/despachos/service'
+import {
+  despachosDelDia,
+  extractTransporteSuggestions,
+  formatoFechaJornada,
+  formatClp,
+  searchDespachos,
+  sumValorClp,
+} from '~/features/despachos/service'
 import { Route } from './index'
 
 type ModoForm = { modo: 'cerrado' } | { modo: 'crear' } | { modo: 'editar'; despacho: Despacho }
@@ -56,6 +64,25 @@ export function DashboardPage() {
   const eliminar = useDeleteDespachoMutation()
 
   const [form, setForm] = React.useState<ModoForm>({ modo: 'cerrado' })
+  const formAbierto = form.modo !== 'cerrado'
+
+  // La jornada: el reloj se congela al montar (una vez por visita), no por
+  // render. useState con inicializador = el patrón "fijar al montar".
+  const [ahora] = React.useState(() => new Date())
+  const delDia = React.useMemo(
+    () => (despachos ? despachosDelDia(despachos, ahora) : []),
+    [despachos, ahora],
+  )
+
+  // Día vacío → la pantalla abre directo en el registro. Los datos llegan
+  // async, así que no puede decidirse en el useState inicial: se ajusta
+  // DURANTE el render (patrón "adjust state on props change" de React),
+  // una sola vez. Si el usuario lo cierra, la jornada queda con su botón.
+  const [autoAbierto, setAutoAbierto] = React.useState(false)
+  if (despachos && despachos.length === 0 && !autoAbierto && form.modo === 'cerrado') {
+    setAutoAbierto(true)
+    setForm({ modo: 'crear' })
+  }
 
   const filtrados = React.useMemo(() => searchDespachos(despachos ?? [], q ?? ''), [despachos, q])
 
@@ -85,90 +112,17 @@ export function DashboardPage() {
 
   const hayFiltro = Boolean(q)
 
+  /**
+   * Modelo de pantalla (decisión de producto del admin):
+   * - Form abierto → ES la pantalla (nada más compite por la vista).
+   * - Default → solo la jornada de hoy; el historial aparece solo cuando
+   *   hay búsqueda activa (progressive disclosure).
+   */
   return (
     <main className="container">
-      <h1>Tracker de Despachos</h1>
-
       <BarraSesion />
 
-      <div className="toolbar">
-        <input
-          type="search"
-          value={q ?? ''}
-          onChange={(e) => cambiarFiltro(e.target.value)}
-          placeholder="Buscar por transporte, comuna, N° doc, N° guía…"
-          aria-label="Buscar despachos"
-        />
-        <button
-          type="button"
-          onClick={() => setForm({ modo: 'crear' })}
-          disabled={form.modo !== 'cerrado' || eliminar.isPending}
-        >
-          + Nuevo despacho
-        </button>
-      </div>
-
-      {isError ? (
-        <div className="card" role="alert">
-          <p className="status-error">{mensajeDeError(error)}</p>
-          {error instanceof DespachoApiError && error.status === 401 ? (
-            <p>
-              <Link to="/login">Ir a iniciar sesión →</Link>
-            </p>
-          ) : (
-            <button type="button" onClick={() => refetch()}>
-              Reintentar
-            </button>
-          )}
-        </div>
-      ) : isPending ? (
-        <p className="card" role="status">
-          Cargando despachos…
-        </p>
-      ) : despachos.length === 0 ? (
-        <div className="card empty-state">
-          <p>Aún no hay despachos registrados.</p>
-          <button
-            type="button"
-            onClick={() => setForm({ modo: 'crear' })}
-            disabled={form.modo !== 'cerrado'}
-          >
-            Crear el primero
-          </button>
-        </div>
-      ) : (
-        <>
-          <p className="muted" aria-live="polite">
-            {hayFiltro
-              ? `${filtrados.length} de ${despachos.length} despachos`
-              : `${despachos.length} despachos`}
-          </p>
-
-          {despachos.length === DESPACHOS_LIMITE_LISTADO ? (
-            <p className="muted">
-              Mostrando los {DESPACHOS_LIMITE_LISTADO} despachos más recientes — usa el filtro para
-              acotar la búsqueda.
-            </p>
-          ) : null}
-
-          {filtrados.length === 0 ? (
-            <p className="card" role="status">
-              Sin resultados para «{q}» — prueba con otro término.
-            </p>
-          ) : (
-            <DespachosTable
-              despachos={filtrados}
-              eliminandoId={eliminar.isPending ? (eliminar.variables ?? null) : null}
-              onEditar={(despacho) => setForm({ modo: 'editar', despacho })}
-              onEliminar={(id) => eliminar.mutate(id)}
-            />
-          )}
-        </>
-      )}
-
-      {/* El form vive FUERA de las ramas del listado: debe abrirse aunque el
-          listado esté en error o vacío (antes quedaba inaccesible). */}
-      {form.modo !== 'cerrado' ? (
+      {formAbierto ? (
         <DespachoForm
           despacho={form.modo === 'editar' ? form.despacho : null}
           sugerenciasTransporte={sugerenciasTransporte}
@@ -177,7 +131,120 @@ export function DashboardPage() {
           onGuardar={handleGuardar}
           onCancelar={() => setForm({ modo: 'cerrado' })}
         />
-      ) : null}
+      ) : (
+        <>
+          <header className="jornada">
+            <div>
+              <h1 className="jornada-fecha">{formatoFechaJornada(ahora)}</h1>
+              <p className="jornada-resumen" aria-live="polite">
+                {delDia.length > 0
+                  ? `${delDia.length === 1 ? '1 despacho' : `${delDia.length} despachos`} por ${formatClp(
+                      sumValorClp(delDia),
+                    )}`
+                  : 'Hoy no ha salido nada todavía.'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setForm({ modo: 'crear' })}
+              disabled={eliminar.isPending}
+            >
+              Registrar despacho
+            </button>
+          </header>
+
+          {isError ? (
+            <div className="card" role="alert">
+              <p className="status-error">{mensajeDeError(error)}</p>
+              {error instanceof DespachoApiError && error.status === 401 ? (
+                <p>
+                  <Link to="/login">Ir a iniciar sesión</Link>
+                </p>
+              ) : (
+                <button type="button" onClick={() => refetch()}>
+                  Reintentar
+                </button>
+              )}
+            </div>
+          ) : isPending ? (
+            <p className="card" role="status">
+              Cargando despachos…
+            </p>
+          ) : (
+            <>
+              {delDia.length > 0 ? (
+                <section className="jornada-lista" aria-label="Despachos de hoy">
+                  {/* Cabecera visual de columnas (solo guía al ojo): los
+                      lectores de pantalla obtienen el contenido de las celdas,
+                      que se describen solas. */}
+                  <div className="fila-despacho fila-cabecera" aria-hidden="true">
+                    <span>Hora</span>
+                    <span>Doc.</span>
+                    <span>Guía</span>
+                    <span>Transporte</span>
+                    <span>Comuna</span>
+                    <span>Valor</span>
+                    <span>Bultos</span>
+                    <span>Peso</span>
+                    <span>Retiro</span>
+                  </div>
+                  {delDia.map((despacho) => (
+                    <DespachoFila
+                      key={despacho.id}
+                      despacho={despacho}
+                      eliminandoId={eliminar.isPending ? (eliminar.variables ?? null) : null}
+                      onEditar={(despachoEditar) =>
+                        setForm({ modo: 'editar', despacho: despachoEditar })
+                      }
+                      onEliminar={(id) => eliminar.mutate(id)}
+                    />
+                  ))}
+                </section>
+              ) : null}
+
+              <section className="busqueda" aria-label="Buscar en el historial">
+                <div className="toolbar">
+                  <input
+                    type="search"
+                    value={q ?? ''}
+                    onChange={(e) => cambiarFiltro(e.target.value)}
+                    placeholder="Buscar en el historial: N° doc, N° guía, transporte, comuna…"
+                    aria-label="Buscar despachos"
+                  />
+                </div>
+
+                {hayFiltro ? (
+                  <>
+                    {despachos.length === DESPACHOS_LIMITE_LISTADO ? (
+                      <p className="muted">
+                        Mostrando los {DESPACHOS_LIMITE_LISTADO} despachos más recientes. Usa el
+                        filtro para acotar la búsqueda.
+                      </p>
+                    ) : null}
+
+                    <p className="muted" aria-live="polite">
+                      {filtrados.length} de {despachos.length} despachos
+                    </p>
+
+                    {filtrados.length === 0 ? (
+                      <p className="card" role="status">
+                        Sin resultados para «{q}» — prueba con otro término.
+                      </p>
+                    ) : (
+                      <DespachosTable
+                        despachos={filtrados}
+                        eliminandoId={eliminar.isPending ? (eliminar.variables ?? null) : null}
+                        onEditar={(despacho) => setForm({ modo: 'editar', despacho })}
+                        onEliminar={(id) => eliminar.mutate(id)}
+                      />
+                    )}
+                  </>
+                ) : null}
+              </section>
+            </>
+          )}
+        </>
+      )}
     </main>
   )
 }

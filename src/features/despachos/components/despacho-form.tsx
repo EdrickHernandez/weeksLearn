@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { despachoInputSchema, type Despacho, type DespachoInput } from '../schemas'
-import { COMUNAS, formatClp } from '../service'
+import { COMUNAS, formatClp, RETIROS_BASE } from '../service'
 
 const TIPOS_DOCUMENTO = [
   { value: 'factura', label: 'Factura' },
@@ -138,6 +138,12 @@ export function DespachoForm({
   const [state, setState] = React.useState<FormState>(() => stateInicial(despacho))
   const [errores, setErrores] = React.useState<Record<string, string>>({})
 
+  // El N° de documento es la llave mental del operador: el cursor lo espera ahí.
+  const refNumeroDocumento = React.useRef<HTMLInputElement>(null)
+  React.useEffect(() => {
+    refNumeroDocumento.current?.focus()
+  }, [])
+
   const set = (campo: keyof FormState) => (valor: string) =>
     setState((previo) => ({ ...previo, [campo]: valor }))
 
@@ -217,6 +223,7 @@ export function DespachoForm({
         <label>
           N° documento
           <input
+            ref={refNumeroDocumento}
             value={state.numeroDocumento}
             onChange={(e) => set('numeroDocumento')(e.target.value)}
             placeholder="F-001"
@@ -377,11 +384,17 @@ export function DespachoForm({
         <label>
           Retirado por
           <input
+            list="sugerencias-retiro"
             value={state.retiradoPor}
             onChange={(e) => set('retiradoPor')(e.target.value)}
             placeholder="Nombre de quien retira"
             disabled={pending}
           />
+          <datalist id="sugerencias-retiro">
+            {RETIROS_BASE.map((nombre) => (
+              <option key={nombre} value={nombre} />
+            ))}
+          </datalist>
         </label>
 
         <label>
