@@ -38,18 +38,19 @@ export function LoginPage() {
   }
 
   return (
-    <main className="container">
-      <h1>Iniciar sesión</h1>
-      <p>Tracker de Despachos — acceso con tu cuenta.</p>
+    <main className="login">
+      <h1 className="login-marca">ACO Maquinarias</h1>
+      <p className="login-sub">Panel de despachos</p>
 
       <form className="card" onSubmit={handleSubmit}>
         <label>
-          Email
+          Correo electrónico
           <input
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             autoComplete="email"
+            autoFocus
             required
             disabled={pending}
           />

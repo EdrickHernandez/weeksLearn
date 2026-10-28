@@ -7,7 +7,7 @@ export const Route = createRootRoute({
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'Tracker de Despachos' },
+      { title: 'ACO Maquinarias — Despachos' },
     ],
     links: [
       // Fuentes del sistema visual (ADR-0004): Barlow Semi Condensed nace de la
