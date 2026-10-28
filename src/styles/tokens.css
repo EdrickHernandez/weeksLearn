@@ -1,0 +1,47 @@
+/* ============================================================
+   TOKENS DE DISEÑO — única fuente de verdad visual del proyecto.
+   Regla: los componentes NUNCA escriben un hex crudo; consumen
+   tokens semánticos (el nombre dice PARA QUÉ, no qué color es).
+   Decision: ADR-0004 (docs/decisions/0004-css-plano-con-tokens.md)
+   ============================================================ */
+
+:root {
+  /* --- Color: superficie y tinta (el mundo bodega) --- */
+  --piso: #ecede9; /* fondo general: gris frío de patio */
+  --papel: #ffffff; /* cada despacho = documento: filas, forms, cards */
+  --papel-hover: #f7f3ec; /* el documento bajo tu mano: papel apenas más cálido */
+  --tinta: #17191a; /* texto principal */
+  --tinta-tenue: #6a716d; /* texto secundario (hora, hints) — 5:1 sobre papel ✓ */
+  --kraft: #a9825a; /* cartón: detalles de identidad */
+  --linea: #d8cfc0; /* reglas divisorias (kraft atenuado) */
+
+  /* --- Color: señal (se gasta en UNA cosa: la acción principal) --- */
+  --senal: #feb800; /* fondo de acción — NUNCA texto claro sobre ella (1.7:1) */
+  --senal-hover: #f0ad00; /* la señal al pasar: mismo significado, un paso más oscuro */
+  --peligro: #c92a2a; /* destructive-only: eliminar y errores — blanco sobre él ✓ */
+  --alerta: #9a6700; /* caución: comuna fuera de catálogo — 4.9:1 sobre papel ✓ */
+
+  /* --- Estados --- */
+  --foco: var(--tinta); /* anillo de foco: los tokens se componen entre sí */
+
+  /* --- Tipografía --- */
+  --fuente-base: 'Barlow Semi Condensed', system-ui, sans-serif;
+  --fuente-datos: 'IBM Plex Mono', monospace; /* solo valores estampados: doc, guía, CLP, peso */
+  --texto-1: 1rem; /* 16px — celdas de tabla, labels y texto auxiliar */
+  --texto-2: 1rem; /* 16px — base UI */
+  --texto-3: 1.375rem; /* 22px — subtítulos de sección */
+  --texto-4: 1.75rem; /* 28px — encabezado del día (el héroe) */
+  --altura-densa: 1.3; /* tablas y filas */
+  --altura-lectura: 1.5; /* párrafos, formularios */
+
+  /* --- Espaciado (escala 4, en rem: respeta el zoom del usuario) --- */
+  --esp-1: 0.25rem; /* 4px */
+  --esp-2: 0.5rem; /* 8px */
+  --esp-3: 0.75rem; /* 12px */
+  --esp-4: 1rem; /* 16px */
+  --esp-6: 1.5rem; /* 24px */
+  --esp-8: 2rem; /* 32px */
+
+  /* --- Forma --- */
+  --radio: 3px; /* solo botones/inputs; las filas son papel: esquinas rectas */
+}

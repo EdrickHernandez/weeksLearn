@@ -36,6 +36,15 @@ export const TRANSPORTES_BASE: readonly string[] = [
   'Retiro en bodega',
 ]
 
+/** Nombres de retiro frecuentes: semilla del datalist "Retirado por". */
+export const RETIROS_BASE: readonly string[] = [
+  'Felipe Gajardo',
+  'Hector',
+  'Omar Aguayo',
+  'Hugo Villa',
+  'Orlando Luna',
+]
+
 /** Clave de comparación: minúsculas, sin tildes, espacios colapsados ("Ñuñoa" → "nunoa"). */
 function matchKey(value: string): string {
   return value
@@ -250,4 +259,49 @@ export function searchDespachos(despachos: readonly Despacho[], q: string): Desp
       ].join(' '),
     ).includes(clave),
   )
+}
+
+/* ============================================================
+   LA JORNADA — la vista del día (héroe del dashboard).
+   "Hoy" es un concepto LOCAL: la comparación usa la zona del
+   navegador, no UTC (las fechas viven guardadas en ISO UTC).
+   ============================================================ */
+
+/** ¿Cae `iso` en el mismo día local que `referencia`? */
+export function esDelMismoDia(iso: string, referencia: Date): boolean {
+  const fecha = new Date(iso)
+  return (
+    fecha.getFullYear() === referencia.getFullYear() &&
+    fecha.getMonth() === referencia.getMonth() &&
+    fecha.getDate() === referencia.getDate()
+  )
+}
+
+/**
+ * Los despachos de la jornada de `referencia`, del más reciente al más
+ * antiguo. `referencia` viaja como parámetro: el test controla el reloj.
+ * El orden compara los strings ISO directo: `toDespacho` normaliza todo a
+ * `toISOString()`, y en ese formato fijo el orden lexicográfico ES el
+ * cronológico.
+ */
+export function despachosDelDia(despachos: readonly Despacho[], referencia: Date): Despacho[] {
+  return despachos
+    .filter((despacho) => esDelMismoDia(despacho.despachadoAt, referencia))
+    .sort((a, b) => (a.despachadoAt < b.despachadoAt ? 1 : -1))
+}
+
+/** Suma del valor de un conjunto de despachos (resumen de la jornada). */
+export function sumValorClp(despachos: readonly Pick<Despacho, 'valorClp'>[]): number {
+  return despachos.reduce((total, despacho) => total + despacho.valorClp, 0)
+}
+
+/** Encabezado de la jornada: "Viernes 23 de octubre de 2026" (es-CL, capitalizado). */
+export function formatoFechaJornada(referencia: Date): string {
+  const texto = new Intl.DateTimeFormat('es-CL', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(referencia)
+  return texto.charAt(0).toUpperCase() + texto.slice(1)
 }
