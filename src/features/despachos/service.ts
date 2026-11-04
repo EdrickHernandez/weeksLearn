@@ -305,3 +305,54 @@ export function formatoFechaJornada(referencia: Date): string {
   }).format(referencia)
   return texto.charAt(0).toUpperCase() + texto.slice(1)
 }
+/** Sustituto visual de un dato ausente en el Excel (negocio: legible para humanos). */
+const SIN_DATO = '—'
+
+/** Fecha/hora de una celda del Excel: "28-10-2026 14:30" (hora local, es-CL, sin AM/PM). */
+export function formatoFechaHora(iso: string): string {
+  return new Intl.DateTimeFormat('es-CL', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(iso))
+}
+
+/** Una fila del Excel de jornada, lista para addRow por key (campo a campo del despacho). */
+export type FilaDespacho = {
+  despachadoAt: string
+  documento: string
+  numeroGuia: string
+  transporte: string
+  comuna: string
+  valorClp: string
+  bultos: number
+  tipoEmbalaje: string
+  pesosBultos: string
+  direccion: string
+  telefono: string
+  contacto: string
+  retiradoPor: string
+  vehiculo: string
+}
+
+export function despachoAFila(despacho: Despacho): FilaDespacho {
+  return {
+    despachadoAt: formatoFechaHora(despacho.despachadoAt),
+    documento: `${despacho.tipoDocumento} ${despacho.numeroDocumento}`,
+    numeroGuia: despacho.numeroGuia,
+    transporte: despacho.transporte,
+    comuna: despacho.comuna,
+    valorClp: formatClp(despacho.valorClp),
+    bultos: despacho.bultos,
+    tipoEmbalaje: despacho.tipoEmbalaje,
+    pesosBultos: despacho.pesosBultos.join(' / '),
+    direccion: despacho.direccion ?? SIN_DATO,
+    telefono: despacho.telefono ?? SIN_DATO,
+    contacto: despacho.contacto ?? SIN_DATO,
+    retiradoPor: despacho.retiradoPor ?? SIN_DATO,
+    vehiculo: despacho.vehiculo ?? SIN_DATO,
+  }
+}

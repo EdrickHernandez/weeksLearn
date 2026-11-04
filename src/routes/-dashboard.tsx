@@ -13,6 +13,7 @@ import { DespachoFicha } from '~/features/despachos/components/despacho-ficha'
 import { DespachoFila } from '~/features/despachos/components/despacho-fila'
 import { DespachosTable } from '~/features/despachos/components/despachos-table'
 import { useDespachosQuery } from '~/features/despachos/queries/use-despachos'
+import { exportarJornada } from '~/features/despachos/exportar-jornada'
 import {
   despachosDelDia,
   extractTransporteSuggestions,
@@ -158,13 +159,24 @@ export function DashboardPage() {
                   : 'Hoy no ha salido nada todavía.'}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => setForm({ modo: 'crear' })}
-              disabled={eliminar.isPending}
-            >
-              Registrar despacho
-            </button>
+            <div className="jornada-acciones">
+              {delDia.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => void exportarJornada(delDia, ahora)}
+                  title="Descarga el Excel de la jornada de hoy"
+                >
+                  Exportar
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setForm({ modo: 'crear' })}
+                disabled={eliminar.isPending}
+              >
+                Registrar despacho
+              </button>
+            </div>
           </header>
 
           {isError ? (
