@@ -125,6 +125,9 @@ export type DespachoFormProps = {
   errorDeServidor: string | null
   onGuardar: (input: DespachoInput) => void
   onCancelar: () => void
+  /** El anfitrión que ofrece su propio control de vuelta (p. ej. la ficha
+      con su botón Atrás) puede apagar este Cancelar para no duplicar. */
+  mostrarCancelar?: boolean
 }
 
 export function DespachoForm({
@@ -134,6 +137,7 @@ export function DespachoForm({
   errorDeServidor,
   onGuardar,
   onCancelar,
+  mostrarCancelar = true,
 }: DespachoFormProps) {
   const [state, setState] = React.useState<FormState>(() => stateInicial(despacho))
   const [errores, setErrores] = React.useState<Record<string, string>>({})
@@ -424,9 +428,11 @@ export function DespachoForm({
         <button type="submit" disabled={pending}>
           {pending ? 'Guardando…' : 'Guardar'}
         </button>
-        <button type="button" className="btn-ghost" onClick={onCancelar} disabled={pending}>
-          Cancelar
-        </button>
+        {mostrarCancelar ? (
+          <button type="button" className="btn-ghost" onClick={onCancelar} disabled={pending}>
+            Cancelar
+          </button>
+        ) : null}
       </div>
     </form>
   )
