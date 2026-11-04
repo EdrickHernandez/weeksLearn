@@ -9,6 +9,7 @@ import { useCreateDespachoMutation } from '~/features/despachos/mutations/use-cr
 import { useDeleteDespachoMutation } from '~/features/despachos/mutations/use-delete-despacho'
 import { useUpdateDespachoMutation } from '~/features/despachos/mutations/use-update-despacho'
 import { DespachoForm } from '~/features/despachos/components/despacho-form'
+import { DespachoFicha } from '~/features/despachos/components/despacho-ficha'
 import { DespachoFila } from '~/features/despachos/components/despacho-fila'
 import { DespachosTable } from '~/features/despachos/components/despachos-table'
 import { useDespachosQuery } from '~/features/despachos/queries/use-despachos'
@@ -22,7 +23,9 @@ import {
 } from '~/features/despachos/service'
 import { Route } from './index'
 
-type ModoForm = { modo: 'cerrado' } | { modo: 'crear' } | { modo: 'editar'; despacho: Despacho }
+type ModoForm = { modo: 'cerrado' } | { modo: 'crear' }
+
+type Ficha = { despacho: Despacho; editando: boolean }
 
 function mensajeDeError(error: unknown): string {
   if (error instanceof DespachoApiError) {
@@ -66,6 +69,22 @@ export function DashboardPage() {
   const [form, setForm] = React.useState<ModoForm>({ modo: 'cerrado' })
   const formAbierto = form.modo !== 'cerrado'
 
+  // --- La ficha (dialog nativo) ---
+  // El <dialog> maneja foco y Escape; el estado solo recuerda QUÉ despacho
+  // se está viendo y si está en modo edición. El flujo de cierre SIEMPRE
+  // pasa por dialog.close() → onClose limpia el estado.
+  const refDialog = React.useRef<HTMLDialogElement>(null)
+  const [ficha, setFicha] = React.useState<Ficha | null>(null)
+
+  function abrirFicha(despacho: Despacho) {
+    setFicha({ despacho, editando: false })
+    refDialog.current?.showModal()
+  }
+
+  function cerrarFicha() {
+    refDialog.current?.close() // onClose del <dialog> hace el resto
+  }
+
   // La jornada: el reloj se congela al montar (una vez por visita), no por
   // render. useState con inicializador = el patrón "fijar al montar".
   const [ahora] = React.useState(() => new Date())
@@ -91,17 +110,11 @@ export function DashboardPage() {
     [despachos],
   )
 
-  const mutationFormActiva = form.modo === 'crear' ? crear : actualizar
-  const errorDeServidor = mutationFormActiva.error ? mensajeDeError(mutationFormActiva.error) : null
+  // El form de pantalla completa SOLO crea; la edición vive en la ficha
+  // (dialog) con el mismo DespachoForm montado adentro.
+  const errorDeServidor = crear.error ? mensajeDeError(crear.error) : null
 
   function handleGuardar(input: DespachoInput) {
-    if (form.modo === 'editar') {
-      actualizar.mutate(
-        { ...input, id: form.despacho.id },
-        { onSuccess: () => setForm({ modo: 'cerrado' }) },
-      )
-      return
-    }
     crear.mutate(input, { onSuccess: () => setForm({ modo: 'cerrado' }) })
   }
 
@@ -113,10 +126,11 @@ export function DashboardPage() {
   const hayFiltro = Boolean(q)
 
   /**
-   * Modelo de pantalla (decisión de producto del admin):
-   * - Form abierto → ES la pantalla (nada más compite por la vista).
-   * - Default → solo la jornada de hoy; el historial aparece solo cuando
-   *   hay búsqueda activa (progressive disclosure).
+   * Modelo de pantalla:
+   * - Form de creación → pantalla completa (la tarea principal).
+   * - Click en fila → ficha en <dialog>: ver todo, editar (el MISMO
+   *   DespachoForm montado dentro) o eliminar. Click fuera / Escape → cerrar.
+   * - Default → solo la jornada; historial solo bajo búsqueda activa.
    */
   return (
     <main className="container">
@@ -124,9 +138,9 @@ export function DashboardPage() {
 
       {formAbierto ? (
         <DespachoForm
-          despacho={form.modo === 'editar' ? form.despacho : null}
+          despacho={null}
           sugerenciasTransporte={sugerenciasTransporte}
-          pending={mutationFormActiva.isPending}
+          pending={crear.isPending}
           errorDeServidor={errorDeServidor}
           onGuardar={handleGuardar}
           onCancelar={() => setForm({ modo: 'cerrado' })}
@@ -189,15 +203,7 @@ export function DashboardPage() {
                     <span>Retiro</span>
                   </div>
                   {delDia.map((despacho) => (
-                    <DespachoFila
-                      key={despacho.id}
-                      despacho={despacho}
-                      eliminandoId={eliminar.isPending ? (eliminar.variables ?? null) : null}
-                      onEditar={(despachoEditar) =>
-                        setForm({ modo: 'editar', despacho: despachoEditar })
-                      }
-                      onEliminar={(id) => eliminar.mutate(id)}
-                    />
+                    <DespachoFila key={despacho.id} despacho={despacho} onAbrirFicha={abrirFicha} />
                   ))}
                 </section>
               ) : null}
@@ -234,7 +240,7 @@ export function DashboardPage() {
                       <DespachosTable
                         despachos={filtrados}
                         eliminandoId={eliminar.isPending ? (eliminar.variables ?? null) : null}
-                        onEditar={(despacho) => setForm({ modo: 'editar', despacho })}
+                        onEditar={(despacho) => setFicha({ despacho, editando: false })}
                         onEliminar={(id) => eliminar.mutate(id)}
                       />
                     )}
@@ -245,6 +251,74 @@ export function DashboardPage() {
           )}
         </>
       )}
+
+      {/* La ficha vive FUERA de las ramas: el dialog nativo bloquea el resto
+          de la página, así que el fondo queda inaccesible mientras está
+          abierto — sin estados que coordinar. */}
+      <dialog
+        ref={refDialog}
+        className={`ficha${ficha?.editando ? ' ficha-editando' : ''}`}
+        onClick={(e) => {
+          // Click en el backdrop: el evento aterriza en el propio <dialog>
+          // (el ::backdrop no es un elemento), no en su contenido.
+          if (e.target === refDialog.current) cerrarFicha()
+        }}
+        onClose={() => setFicha(null)}
+      >
+        {ficha && !ficha.editando ? (
+          <DespachoFicha
+            despacho={ficha.despacho}
+            onEditar={() => setFicha({ ...ficha, editando: true })}
+            onEliminar={() => {
+              eliminar.mutate(ficha.despacho.id)
+              cerrarFicha()
+            }}
+          />
+        ) : null}
+
+        {ficha && ficha.editando ? (
+          <>
+            {/* Navegación del dialog: Atrás vuelve a la ficha de lectura.
+                SVG inline con currentColor (pinta del color del texto):
+                sin librería de íconos por UN glifo. Botón solo-ícono →
+                necesita nombre accesible (aria-label). Además el cierre
+                del form está apagado (mostrarCancelar=false) para no
+                duplicar salidas. */}
+            <button
+              type="button"
+              className="btn-ghost ficha-atras"
+              aria-label="Volver a la ficha del despacho"
+              title="Volver a la ficha"
+              onClick={() => setFicha({ ...ficha, editando: false })}
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <DespachoForm
+              despacho={ficha.despacho}
+              sugerenciasTransporte={sugerenciasTransporte}
+              pending={actualizar.isPending}
+              errorDeServidor={actualizar.error ? mensajeDeError(actualizar.error) : null}
+              onGuardar={(input) =>
+                actualizar.mutate({ ...input, id: ficha.despacho.id }, { onSuccess: cerrarFicha })
+              }
+              onCancelar={() => setFicha({ ...ficha, editando: false })}
+              mostrarCancelar={false}
+            />
+          </>
+        ) : null}
+      </dialog>
     </main>
   )
 }

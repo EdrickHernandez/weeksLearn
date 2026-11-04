@@ -288,7 +288,7 @@ table.despachos td.num {
   grid-template-columns: subgrid;
   align-items: baseline;
   border-bottom: 1px solid var(--linea);
-  position: relative; /* ancla del overlay de acciones */
+  cursor: pointer; /* la fila entera es el botón que abre la ficha */
 }
 
 /* Sin min-width:0 los hijos de grid no encogen bajo su contenido y el
@@ -326,52 +326,98 @@ table.despachos td.num {
   font-size: var(--texto-1);
 }
 
-/* Acciones en overlay: son la COLA de la fila, no una tarjeta flotante.
-   Mismo fondo que la fila en hover, altura completa, pegadas al borde
-   derecho, y entran deslizando desde afuera (derecha → izquierda). En
-   reposo invisibles Y no-clickeables (pointer-events none); hover o foco
-   de teclado las encienden; touch siempre las muestra. */
-.fila-despacho .row-actions {
-  position: absolute;
-  inset: 0 0 0 auto;
-  display: inline-flex;
+/* ============================================================
+   FICHA — <dialog> NATIVO: el navegador regala foco atrapado, Escape
+   y la semántica de modal. Solo estilizamos.
+   ============================================================ */
+
+dialog.ficha {
+  border: 1px solid var(--linea);
+  border-radius: var(--radio);
+  padding: var(--esp-6);
+  background: var(--papel);
+  color: var(--tinta);
+  /* Lectura: documento compacto, el tamaño justo. La edición ensancha
+     vía .ficha-editando (el estado del dashboard decide la clase). */
+  width: min(460px, calc(100vw - 2 * var(--esp-4)));
+  max-height: 90dvh;
+  overflow-y: auto;
+}
+
+/* Edición: 760px es el punto donde el form-grid (auto-fit minmax 220px)
+   entra en 3 columnas — el form completo a la vista, sin scroll en
+   pantallas normales; el scroll queda reservado para pantallas chicas.
+
+   El form montado adentro NO conserva su look de .card: dos capas de
+   padding y borde dentro de borde se comían el ancho de la tercera
+   columna. El dialog YA es la tarjeta; el form es su contenido. */
+dialog.ficha-editando {
+  width: min(760px, calc(100vw - 2 * var(--esp-4)));
+}
+
+dialog.ficha .card {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+}
+
+/* El velo detrás: tinta al 40% vía color-mix — los tokens aussi aquí,
+   nada de hex crudo ni nueva variable para un solo uso. */
+dialog.ficha::backdrop {
+  background: color-mix(in srgb, var(--tinta) 40%, transparent);
+}
+
+.ficha-titulo {
+  margin: 0;
+  font-size: var(--texto-3);
+}
+
+.ficha-fecha {
+  margin: 0 0 var(--esp-4);
+  color: var(--tinta-tenue);
+  font-size: var(--texto-1);
+}
+
+.ficha-dato {
+  display: grid;
+  grid-template-columns: minmax(5rem, 8rem) 1fr;
+  gap: var(--esp-3);
+  align-items: baseline;
+  padding: var(--esp-1) 0;
+  border-bottom: 1px solid var(--linea);
+}
+
+.ficha-etiqueta {
+  color: var(--tinta-tenue);
+  font-size: var(--texto-1);
+}
+
+.ficha-acciones {
+  display: flex;
+  align-items: center;
+  gap: var(--esp-3);
+  margin-top: var(--esp-6);
+}
+
+.ficha-confirmar {
+  display: flex;
   align-items: center;
   gap: var(--esp-2);
-  padding: 0 var(--esp-3);
-  background: var(--papel-hover);
-  opacity: 0;
-  pointer-events: none;
-  transform: translateX(100%);
-  transition:
-    opacity 150ms ease,
-    transform 150ms ease;
+  font-size: var(--texto-1);
 }
 
-.fila-despacho:hover .row-actions,
-.fila-despacho:focus-within .row-actions {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateX(0);
-}
-
-/* Feedback visible del ghost DENTRO del panel: su hover normal usa
-   papel-hover, que ya es el fondo del panel — sin esto, no se vería. */
-.fila-despacho .row-actions .btn-ghost:hover {
-  background: var(--papel);
-}
-
-@media (hover: none) {
-  .fila-despacho .row-actions {
-    opacity: 1;
-    pointer-events: auto;
-    transform: translateX(0);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .fila-despacho .row-actions {
-    transition: none;
-  }
+/* Navegación del dialog de edición: arriba, pegado a la izquierda.
+   Botón solo-ícono: cuadrado, SVG centrado, el trazo hereda el color. */
+.ficha-atras {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  margin: 0 0 var(--esp-2);
 }
 
 .fila-doc {
