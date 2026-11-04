@@ -15,6 +15,8 @@ import {
   sumValorClp,
   titleCase,
   toDespacho,
+  despachoAFila,
+  formatoFechaHora,
 } from './service'
 import {
   createDespachoInputSchema,
@@ -445,5 +447,76 @@ describe('la jornada', () => {
     const texto = formatoFechaJornada(ahora)
     expect(texto).toContain('23 de octubre')
     expect(texto.charAt(0)).toBe(texto.charAt(0).toUpperCase())
+  })
+})
+
+function despachoBase(sobreescritos: Partial<Despacho> = {}): Despacho {
+  return {
+    id: '00000000-0000-0000-0000-000000000000',
+    userId: '00000000-0000-0000-0000-000000000001',
+    despachadoAt: '2026-10-28T14:30:00.000Z',
+    tipoDocumento: 'boleta',
+    numeroDocumento: '12345',
+    numeroGuia: 'G-789',
+    transporte: 'Starken',
+    comuna: 'Providencia',
+    comunaEnCatalogo: true,
+    valorClp: 1_234_567,
+    bultos: 2,
+    tipoEmbalaje: 'caja',
+    pesosBultos: [12.5, 8],
+    direccion: 'Av. Ejemplo 123',
+    telefono: null,
+    contacto: 'Juan',
+    retiradoPor: null,
+    vehiculo: null,
+    createdAt: '2026-10-28T14:31:00.000Z',
+    updatedAt: '2026-10-28T14:31:00.000Z',
+    ...sobreescritos,
+  }
+}
+
+describe('formatoFechaHora', () => {
+  it('round-trip local: 28 oct 14:30 local → ISO → legible', () => {
+    // Constructor LOCAL (mes 9 = octubre, los meses son 0-indexed):
+    // el ISO resultante codifica 14:30 EN LA ZONA del runner, así el test
+    // no depende de si corre en Chile (UTC-3) o en el CI (UTC).
+    const local = new Date(2026, 9, 28, 14, 30)
+    const legible = formatoFechaHora(local.toISOString())
+    expect(legible).toMatch(/28-10-2026/)
+    expect(legible).toContain('14:30')
+  })
+})
+
+describe('despachoAFila', () => {
+  it('concatena los pesos con " / "', () => {
+    expect(despachoAFila(despachoBase()).pesosBultos).toBe('12.5 / 8')
+  })
+
+  it('bultos vacíos → celda blanca (el regalo del join)', () => {
+    const fila = despachoAFila(despachoBase({ pesosBultos: [], bultos: 0 }))
+    expect(fila.pesosBultos).toBe('')
+  })
+
+  it('lo presente pasa intacto; lo ausente se marca con —', () => {
+    const fila = despachoAFila(despachoBase())
+    expect(fila.direccion).toBe('Av. Ejemplo 123')
+    expect(fila.telefono).toBe('—')
+    expect(fila.retiradoPor).toBe('—')
+  })
+
+  it('el valor viaja formateado en CLP', () => {
+    expect(despachoAFila(despachoBase()).valorClp).toBe('$1.234.567')
+  })
+
+  it('retiro en bodega: nombre del retiro; dirección marcada', () => {
+    const fila = despachoAFila(
+      despachoBase({
+        retiradoPor: 'Omar Aguayo',
+        direccion: null,
+      }),
+    )
+    expect(fila.direccion).toBe('—')
+    expect(fila.retiradoPor).toBe('Omar Aguayo')
   })
 })

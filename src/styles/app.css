@@ -255,6 +255,13 @@ table.despachos td.num {
   border-bottom: 1px solid var(--linea);
 }
 
+/* El grupo de acciones va agrupado: así space-between reparte solo entre
+   TÍTULO y GRUPO, y los botones quedan pegados entre sí (resp-2). */
+.jornada-acciones {
+  display: flex;
+  gap: var(--esp-2);
+}
+
 .jornada-fecha {
   margin: 0;
   font-size: var(--texto-4);
