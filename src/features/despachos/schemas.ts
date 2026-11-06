@@ -181,8 +181,122 @@ export type ServiceError = z.infer<typeof serviceErrorSchema>
 export type DespachoResult<T> = { ok: true; data: T } | { ok: false; error: ServiceError }
 
 /**
- * Límite del listado principal: el Server Function entrega solo los N más
- * recientes (payload acotado para producción con 10.5k filas históricas).
- * El filtrado/paginación server-side completa llega con la Semana 2.
+ * Tamaño de página DEFAULT del listado server-side. El operador puede
+ * ampliarlo hasta 200 desde el panel (?porPagina=N): valores verificados
+ * (los permitidos viajan en la URL), nunca arbitrarios.
  */
-export const DESPACHOS_LIMITE_LISTADO = 200
+export const DESPACHOS_POR_PAGINA_DEFAULT = 50
+
+/** Tope duro de página: una URL forjada no baila el server por media hora. */
+const MAX_PAGINA = 500
+
+/** Opciones legítimas del selector "Mostrar" del panel de filtros. */
+const OPCIONES_POR_PAGINA: readonly number[] = [50, 100, 150, 200]
+
+/**
+ * Filtros del historial que viven en la URL (?q=&desde=&hasta=&pagina=).
+ * Las fechas viajan como día calendario (YYYY-MM-DD, input date): el límite
+ * horario lo resuelve el NAVEGADOR en su zona local (mismo criterio de la
+ * jornada), nunca el servidor.
+ */
+const filtroTextoUrl = (max: number) =>
+  z.preprocess(
+    (valor) => (typeof valor !== 'string' ? undefined : valor.trim() || undefined),
+    z.string().max(max, `El filtro admite hasta ${max} caracteres`).optional(),
+  )
+
+const filtroFechaUrl = z.preprocess(
+  (valor) => (typeof valor !== 'string' ? undefined : valor || undefined),
+  z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha del filtro inválida')
+    .refine((valor) => {
+      const [anio, mes, dia] = valor.split('-').map(Number)
+      // Validación de calendario en UTC: no depende de la TZ del servidor
+      // (el instante local se calcula después en el navegador).
+      const fecha = new Date(0)
+      fecha.setUTCFullYear(anio, mes - 1, dia)
+      return (
+        fecha.getUTCFullYear() === anio &&
+        fecha.getUTCMonth() === mes - 1 &&
+        fecha.getUTCDate() === dia
+      )
+    }, 'Fecha del filtro inválida')
+    .optional(),
+)
+
+/**
+ * La URL solo lleva strings: "3" → 3. Todo lo demás (vacío, "0", "abc",
+ * "501") se descarga a undefined con .catch() — la pagina es estado de
+ * NAVEGACIÓN, no semántica: basura en la página borra la página, nunca
+ * los filtros que acompañan (que son semántica y sí merecen fallar).
+ */
+export const filtroPaginaUrl = z.preprocess(
+  (valor) => (typeof valor !== 'string' && typeof valor !== 'number' ? undefined : valor),
+  z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(MAX_PAGINA, `Sin páginas más allá de ${MAX_PAGINA}`)
+    .optional()
+    .catch(undefined),
+)
+
+/** Solo los valores del selector "Mostrar" son legítimos: basura → default (50). */
+export const filtroPorPaginaUrl = z.preprocess(
+  (valor) => (typeof valor !== 'string' && typeof valor !== 'number' ? undefined : valor),
+  z.coerce
+    .number()
+    .refine((n) => OPCIONES_POR_PAGINA.includes(n), 'Por página inválido')
+    .optional()
+    .catch(undefined),
+)
+
+export const despachoFiltrosUrlSchema = z.object({
+  q: filtroTextoUrl(120),
+  desde: filtroFechaUrl,
+  hasta: filtroFechaUrl,
+  tipoDocumento: tipoDocumentoSchema.optional(),
+  transporte: filtroTextoUrl(80),
+  comuna: filtroTextoUrl(60),
+  pagina: filtroPaginaUrl,
+  porPagina: filtroPorPaginaUrl,
+})
+
+export type DespachoFiltrosUrl = z.infer<typeof despachoFiltrosUrlSchema>
+
+/** Página server-side cruda (filas con bultos embebidos + COUNT total). */
+export const paginaDespachosRowSchema = z.object({
+  despachos: z.array(despachoConBultosRowSchema),
+  /** Total de filas que cumplen los filtros (COUNT exacto de PostgREST). */
+  total: z.number().int().min(0),
+})
+
+export type PaginaDespachosRow = z.infer<typeof paginaDespachosRowSchema>
+
+/** Página del dominio que consume la UI (camelCase, fechas ISO UTC). */
+export const paginaDespachosSchema = z.object({
+  despachos: z.array(despachoSchema),
+  /** Total de filas que cumplen los filtros (COUNT de PostgREST). */
+  total: z.number().int().min(0),
+})
+
+export type PaginaDespachos = z.infer<typeof paginaDespachosSchema>
+
+/** Filtros YA convertidos a fronteras ISO UTC + página (input del Server Function). */
+export const listadoDespachosInputSchema = z.object({
+  q: z.string().trim().max(120).optional(),
+  /** Límite inferior INCLUSIVO (inicio del día local en ISO UTC). */
+  desde: z.iso.datetime().optional(),
+  /** Límite superior EXCLUSIVO (inicio del día siguiente local en ISO UTC). */
+  hasta: z.iso.datetime().optional(),
+  tipoDocumento: tipoDocumentoSchema.optional(),
+  transporte: z.string().trim().max(80).optional(),
+  comuna: z.string().trim().max(60).optional(),
+  /** Página 1-based (la URL la valida con filtroPaginaUrl; el server la revalida). */
+  pagina: filtroPaginaUrl,
+  /** Tamaño de página del selector "Mostrar" (50/100/150/200, default 50). */
+  porPagina: filtroPorPaginaUrl,
+})
+
+export type ListadoDespachosInput = z.infer<typeof listadoDespachosInputSchema>

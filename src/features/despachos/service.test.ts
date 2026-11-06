@@ -5,14 +5,18 @@ import {
   buildDespachoUpdate,
   despachosDelDia,
   extractTransporteSuggestions,
+  finDiaLocalIso,
   formatoFechaJornada,
   formatClp,
+  hayFiltrosActivos,
+  inicioDiaLocalIso,
   normalizeComuna,
   normalizeTelefono,
   normalizeTransporte,
-  searchDespachos,
+  patronIlike,
   sumBultos,
   sumValorClp,
+  termQPostgrest,
   titleCase,
   toDespacho,
   despachoAFila,
@@ -21,6 +25,7 @@ import {
 import {
   createDespachoInputSchema,
   despachoConBultosRowSchema,
+  despachoFiltrosUrlSchema,
   despachoInputSchema,
   updateDespachoInputSchema,
   type Despacho,
@@ -254,35 +259,93 @@ describe('toDespacho', () => {
   })
 })
 
-describe('searchDespachos', () => {
-  const despachos = [
-    fixDespacho({ id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1' }),
-    fixDespacho({
-      id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2',
-      transporte: 'Chilexpress',
-      comuna: 'Los Ángeles',
-      numeroGuia: 'G-200',
-    }),
-  ]
-
-  it('sin query devuelve todos', () => {
-    expect(searchDespachos(despachos, '')).toHaveLength(2)
-    expect(searchDespachos(despachos, '   ')).toHaveLength(2)
+describe('los helpers PostgREST (sanear antes de tocar la base)', () => {
+  it('hayFiltrosActivos: la pagina NO es un filtro (regla del negocio)', () => {
+    expect(hayFiltrosActivos({})).toBe(false)
+    expect(hayFiltrosActivos({ pagina: 3 })).toBe(false)
+    expect(hayFiltrosActivos({ q: 'starken' })).toBe(true)
+    expect(hayFiltrosActivos({ desde: '2026-10-01' })).toBe(true)
+    // Contrato: recibe filtros YA saneados (el schema trimea/descarta vacíos
+    // y espacios); este helper no re-trimea — eso sería duplicar normalización.
+    expect(hayFiltrosActivos({ comuna: '' })).toBe(false)
+    expect(hayFiltrosActivos({ tipoDocumento: 'factura' })).toBe(true)
   })
 
-  it('matchea insensible a mayúsculas y tildes en varios campos', () => {
-    expect(searchDespachos(despachos, 'starken')).toHaveLength(1)
-    expect(searchDespachos(despachos, 'PROVIDENCIA')).toHaveLength(1)
-    expect(searchDespachos(despachos, 'los angeles')).toHaveLength(1) // sin tilde
-    expect(searchDespachos(despachos, 'g-200')).toHaveLength(1) // por guía
+  it('termQPostgrest saca reservados del or-filter, comodines y trimmea', () => {
+    expect(termQPostgrest(' starken,1295 ')).toBe('starken1295')
+    expect(termQPostgrest('correos (chile)')).toBe('correos chile')
+    expect(termQPostgrest('a*b%')).toBe('ab')
   })
 
-  it('sin resultados devuelve lista vacía', () => {
-    expect(searchDespachos(despachos, 'temuco')).toEqual([])
+  it('patronIlike arma el patrón parcial, neutralizando comodines del usuario', () => {
+    expect(patronIlike('Starken')).toBe('%Starken%')
+    expect(patronIlike('  %villa_  ')).toBe('%villa%')
+  })
+})
+
+describe('las fronteras del día (URL YYYY-MM-DD → límites ISO UTC)', () => {
+  // Ambos lados se construyen LOCALMENTE: el test es inmune a la zona del
+  // runner (Chile UTC-3 vs CI UTC) — el mismo truco de la jornada.
+  it('desde = medianoche local INCLUSIVA; hasta = medianoche del día siguiente', () => {
+    expect(inicioDiaLocalIso('2026-10-28')).toBe(new Date(2026, 9, 28, 0, 0, 0, 0).toISOString())
+    expect(finDiaLocalIso('2026-10-28')).toBe(new Date(2026, 9, 29, 0, 0, 0, 0).toISOString())
+  })
+
+  it('el +1 rueda sobre mes y año', () => {
+    expect(finDiaLocalIso('2026-10-31')).toBe(new Date(2026, 10, 1, 0, 0, 0, 0).toISOString())
+    expect(finDiaLocalIso('2026-02-28')).toBe(new Date(2026, 2, 1, 0, 0, 0, 0).toISOString())
+  })
+
+  it('fecha imposible → error explícito (la URL viaja sanada, pero Date no se confía)', () => {
+    expect(() => inicioDiaLocalIso('2026-13-00')).toThrow()
+    expect(() => inicioDiaLocalIso('2026-02-31')).toThrow()
   })
 })
 
 describe('schemas', () => {
+  it('valida y sanea los filtros de URL, incluida la fecha del calendario', () => {
+    expect(
+      despachoFiltrosUrlSchema.parse({
+        q: '  guía  ',
+        desde: '2026-10-01',
+        hasta: '2026-10-31',
+        tipoDocumento: 'factura',
+        transporte: ' Chilexpress ',
+        comuna: ' Ñuñoa ',
+      }),
+    ).toEqual({
+      q: 'guía',
+      desde: '2026-10-01',
+      hasta: '2026-10-31',
+      tipoDocumento: 'factura',
+      transporte: 'Chilexpress',
+      comuna: 'Ñuñoa',
+    })
+    expect(despachoFiltrosUrlSchema.safeParse({ desde: '2026-02-31' }).success).toBe(false)
+    expect(despachoFiltrosUrlSchema.safeParse({ tipoDocumento: 'guia' }).success).toBe(false)
+  })
+
+  it('pagina viaja como string en la URL: "3" → 3; basura → undefined sin derribar los demás', () => {
+    expect(despachoFiltrosUrlSchema.parse({ pagina: '3' }).pagina).toBe(3)
+    // Estado de navegación: basura borra la página, no los filtros vecinos.
+    for (const basura of ['0', 'abc', '501', '']) {
+      const parsed = despachoFiltrosUrlSchema.parse({ pagina: basura, q: 'starken' })
+      expect(parsed.pagina).toBeUndefined()
+      expect(parsed.q).toBe('starken')
+    }
+    expect(despachoFiltrosUrlSchema.parse({}).pagina).toBeUndefined()
+  })
+
+  it('porPagina solo acepta los valores del selector (50/100/150/200)', () => {
+    expect(despachoFiltrosUrlSchema.parse({ porPagina: '100' }).porPagina).toBe(100)
+    for (const basura of ['75', 'abc', '', '-1']) {
+      const parsed = despachoFiltrosUrlSchema.parse({ porPagina: basura, q: 'starken' })
+      expect(parsed.porPagina).toBeUndefined()
+      expect(parsed.q).toBe('starken')
+    }
+    expect(despachoFiltrosUrlSchema.parse({}).porPagina).toBeUndefined()
+  })
+
   it('despachoInputSchema rechaza valor 0, bultos inválidos y enums inválidos', () => {
     expect(despachoInputSchema.safeParse({ ...inputBase, valorClp: 0 }).success).toBe(false)
     expect(despachoInputSchema.safeParse({ ...inputBase, bultos: 0 }).success).toBe(false)

@@ -5,8 +5,9 @@ import { despachoAFila, formatClp, sumValorClp } from './service'
 /**
  * Piezas del export a Excel de la jornada (pieza 1 del acuerdo):
  * - `nombreArchivoJornada` y `armarWorkbookJornada` son PURAS y testeables.
- * - `exportarJornada` es la única que toca APIs del browser (Blob/descarga)
- *   y solo se invoca desde un click de la UI.
+ * - `descargarXlsx` es la única que toca APIs del browser (Blob/descarga)
+ *   y solo se invoca desde un click de la UI (vía exportarJornada /
+ *   exportarFiltro).
  * ExcelJS vive SOLO en este archivo: el service queda libre de librerías.
  */
 
@@ -16,6 +17,11 @@ export function nombreArchivoJornada(referencia: Date): string {
   const m = String(referencia.getMonth() + 1).padStart(2, '0') // getMonth es 0-indexed
   const d = String(referencia.getDate()).padStart(2, '0')
   return `despachos-acob3-${y}-${m}-${d}.xlsx`
+}
+
+/** Nombre del export de la búsqueda: mismo patrón + sufijo para no confundir. */
+export function nombreArchivoFiltro(referencia: Date): string {
+  return nombreArchivoJornada(referencia).replace('.xlsx', '-filtro.xlsx')
 }
 
 /**
@@ -62,16 +68,11 @@ export function armarWorkbookJornada(delDia: readonly Despacho[]): ExcelJS.Workb
   return workbook
 }
 
-/**
- * Coreografía de descarga del browser: bytes en RAM → Blob (archivo en
- * memoria) → URL temporal → un <a> invisible finge el click → el browser
- * lo baja a disco → la URL se libera (mismo porqué que liberar una pool).
- */
-export async function exportarJornada(
-  delDia: readonly Despacho[],
-  referencia: Date,
-): Promise<void> {
-  const workbook = armarWorkbookJornada(delDia)
+/** Coreografía de descarga compartida: bytes en RAM → Blob (archivo en
+ *  memoria) → URL temporal → un <a> invisible finge el click → el browser
+ *  lo baja a disco → la URL se libera (mismo porqué que liberar una pool). */
+async function descargarXlsx(despachos: readonly Despacho[], nombreArchivo: string): Promise<void> {
+  const workbook = armarWorkbookJornada(despachos)
   const bytes = await workbook.xlsx.writeBuffer()
   const blob = new Blob([bytes], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -79,7 +80,22 @@ export async function exportarJornada(
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
   anchor.href = url
-  anchor.download = nombreArchivoJornada(referencia)
+  anchor.download = nombreArchivo
   anchor.click()
   URL.revokeObjectURL(url)
+}
+
+export async function exportarJornada(
+  delDia: readonly Despacho[],
+  referencia: Date,
+): Promise<void> {
+  await descargarXlsx(delDia, nombreArchivoJornada(referencia))
+}
+
+/** El listado filtrado viaja con SU nombre (sufijo -filtro) para no confundirlo con la jornada. */
+export async function exportarFiltro(
+  resultados: readonly Despacho[],
+  referencia: Date,
+): Promise<void> {
+  await descargarXlsx(resultados, nombreArchivoFiltro(referencia))
 }

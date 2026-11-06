@@ -2,9 +2,10 @@ import * as React from 'react'
 import type { Despacho } from '../schemas'
 import { formatClp, sumBultos } from '../service'
 
-const FORMATO_HORA = new Intl.DateTimeFormat('es-CL', {
-  hour: '2-digit',
-  minute: '2-digit',
+/** Fecha alone de la jornada: solo día-mes ("04-11") — la lista es idéntica al historial. */
+const FORMATO_FECHA = new Intl.DateTimeFormat('es-CL', {
+  day: '2-digit',
+  month: '2-digit',
 })
 
 export type DespachoFilaProps = {
@@ -37,7 +38,7 @@ export function DespachoFila({ despacho, onAbrirFicha }: DespachoFilaProps) {
       }}
     >
       <time className="fila-hora" dateTime={despacho.despachadoAt}>
-        {FORMATO_HORA.format(new Date(despacho.despachadoAt))}
+        {FORMATO_FECHA.format(new Date(despacho.despachadoAt))}
       </time>
       <span className="fila-doc">
         {despacho.tipoDocumento === 'factura' ? 'Fact.' : 'Bol.'} {despacho.numeroDocumento}
