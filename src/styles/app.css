@@ -396,6 +396,7 @@ dialog.ficha::backdrop {
 
 .ficha-acciones {
   display: flex;
+  justify-content: flex-end;
   align-items: center;
   gap: var(--esp-3);
   margin-top: var(--esp-6);
