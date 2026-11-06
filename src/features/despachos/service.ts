@@ -5,6 +5,7 @@ import {
   type Despacho,
   type DespachoBultoValues,
   type DespachoConBultosRow,
+  type DespachoFiltrosUrl,
   type DespachoInput,
   type DespachoInsertValues,
   type DespachoRow,
@@ -237,28 +238,93 @@ export function parseDespachoConBultos(row: unknown): DespachoConBultosRow {
   return despachoConBultosRowSchema.parse(row)
 }
 
-/**
- * Filtro de búsqueda client-side para el parámetro ?q= de la URL.
- * Busca insensible a mayúsculas/tildes/espacios sobre los campos texto
- * que un operador usaría para encontrar un despacho: transporte, comuna,
- * números de documento/guía y nombres de contacto/retiro.
- */
-export function searchDespachos(despachos: readonly Despacho[], q: string): Despacho[] {
-  const clave = matchKey(q)
-  if (!clave) return [...despachos]
+/* ============================================================
+   FILTROS SERVER-SIDE — la psicología del dato es la misma que la
+   del formulario: el estado OPCIONAL se normaliza ANTES de tocar
+   la base (aquí, antes de llegar a la Server Function).
+   ============================================================ */
 
-  return despachos.filter((despacho) =>
-    matchKey(
-      [
-        despacho.transporte,
-        despacho.comuna,
-        despacho.numeroDocumento,
-        despacho.numeroGuia,
-        despacho.contacto,
-        despacho.retiradoPor,
-      ].join(' '),
-    ).includes(clave),
+/**
+ * ¿Hay search activa? La PAGINACIÓN es un accesorio de la búsqueda:
+ * sin filtros, ?pagina=N no tiene sentido (el default sin filtros es
+ * siempre la jornada con lo más reciente) y la URL lo descarta antes
+ * de que el estado contamine otras vistas. La firma recibe la página
+ * completa a propósito: se IGNORA — pagina no es un filtro.
+ */
+export function hayFiltrosActivos(filtros: DespachoFiltrosUrl): boolean {
+  return Boolean(
+    filtros.q ||
+    filtros.desde ||
+    filtros.hasta ||
+    filtros.tipoDocumento ||
+    filtros.transporte ||
+    filtros.comuna,
   )
+}
+
+/**
+ * Caracteres que rompen el `or-filter` de PostgREST o son comodines
+ * del `ilike` (`*` viaja como %): la q es texto libre del usuario,
+ * no una query. Saneamos en vez de escapar — es búsqueda, no literal.
+ */
+const RESERVADOS_POSTGREST = /[\\%_*,().:"']/g
+
+/** Texto libre usado por el `.or(...)` del repo. Vacío tras el saneo → sin filtro. */
+export function termQPostgrest(q: string): string {
+  return q.replace(RESERVADOS_POSTGREST, '').trim()
+}
+
+/** Patrón `ilike` de una sola columna: comodines del usuario fuera, match parcial. */
+export function patronIlike(valor: string): string {
+  return `%${valor.replace(/[\\%_*,().:"']/g, '').trim()}%`
+}
+
+/* ============================================================
+   LAS FRONTERAS DEL DÍA — mismo criterio que la jornada: el día
+   es un concepto LOCAL del navegador. La URL viaja "2026-10-01"
+   y el cliente la convierte a ISO UTC ANTES de llamar al server.
+   El constructor numérico local (no el parseo de strings, que
+   implicaría UTC) ancla el día a la zona del usuario.
+   ============================================================ */
+
+/** "2026-10-01" → ISO UTC de la medianoche LOCAL de ese día (inclusive). */
+export function inicioDiaLocalIso(fecha: string): string {
+  const [anio, mes, dia] = partesFecha(fecha)
+  return medianocheLocal(anio, mes, dia).toISOString()
+}
+
+/** "2026-10-01" → ISO UTC de la medianoche LOCAL del día SIGUIENTE (exclusivo). */
+export function finDiaLocalIso(fecha: string): string {
+  const [anio, mes, dia] = partesFecha(fecha)
+  return medianocheLocal(anio, mes, dia + 1).toISOString()
+}
+
+/** Construye la medianoche local sin la regla especial del constructor para años 0–99. */
+function medianocheLocal(anio: number, mes: number, dia: number): Date {
+  const fecha = new Date(0)
+  fecha.setFullYear(anio, mes, dia)
+  fecha.setHours(0, 0, 0, 0)
+  return fecha
+}
+
+/** Desglose del "YYYY-MM-DD" validado por el schema (falla si la fecha es imposible). */
+function partesFecha(fecha: string): [number, number, number] {
+  const [anio, mes, dia] = fecha.split('-').map(Number)
+  if (!Number.isInteger(anio) || !Number.isInteger(mes) || !Number.isInteger(dia)) {
+    throw new Error(`Fecha de filtro inválida: ${fecha}`)
+  }
+  // La validez del día calendario se comprueba en UTC (independiente de la
+  // TZ del runner); luego usamos constructor local para obtener el límite real.
+  const validada = new Date(0)
+  validada.setUTCFullYear(anio, mes - 1, dia)
+  if (
+    validada.getUTCFullYear() !== anio ||
+    validada.getUTCMonth() !== mes - 1 ||
+    validada.getUTCDate() !== dia
+  ) {
+    throw new Error(`Fecha de filtro inválida: ${fecha}`)
+  }
+  return [anio, mes - 1, dia]
 }
 
 /* ============================================================

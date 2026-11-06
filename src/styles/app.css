@@ -148,45 +148,29 @@ select {
   max-width: none;
 }
 
-/* --- Tabla: el listado de documentos --- */
+/* ============================================================
+   LISTA HISTORIAL — mismo lenguaje de fila-documento que la
+   jornada: la LISTA define las columnas una sola vez y cada fila
+   las hereda con subgrid (cabecera y filas alinean siempre).
+   ============================================================ */
 
-.table-wrap {
-  overflow-x: auto;
+.historial-wrap {
+  overflow-x: auto; /* en móvil las columnas deslizan, no trompean */
+}
+
+.historial-lista {
+  display: grid;
+  /* Mismas pistas que .jornada-lista: las dos listas comparten formato y
+     el ojo encuentra cada dato en la misma posición visual en ambas. */
+  grid-template-columns: auto auto auto minmax(0, 1.2fr) minmax(0, 1fr) auto auto auto minmax(
+      0,
+      1.2fr
+    );
+  gap: 0 var(--esp-3);
+  background: var(--papel);
   border: 1px solid var(--linea);
   border-radius: var(--radio);
-  background: var(--papel);
-}
-
-table.despachos {
-  border-collapse: collapse;
-  width: 100%;
-  font-size: var(
-    --texto-2
-  ); /* la tabla manda al tamaño base: es el contenido principal del historial */
-  line-height: var(--altura-densa);
-}
-
-table.despachos th,
-table.despachos td {
-  text-align: left;
-  padding: var(--esp-2) var(--esp-3);
-  border-bottom: 1px solid var(--linea);
-  white-space: nowrap;
-}
-
-/* Encabezados en sentence case: las mayúsculas sostenidas son un
-   adorno genérico que la guía de diseño pide evitar. La jerarquía
-   la da el peso y el tono, no las capitales. */
-table.despachos th {
-  color: var(--tinta-tenue);
-  font-weight: 600;
-}
-
-/* Los valores numéricos van estampados: mono tabular, dígitos que
-   no bailan entre filas. */
-table.despachos td.num {
-  font-family: var(--fuente-datos);
-  font-variant-numeric: tabular-nums;
+  min-width: 640px; /* ancho mínimo honesto: el scroll horizontal es mejor que columnas colapsadas */
 }
 
 /* --- Formulario --- */
@@ -222,6 +206,15 @@ table.despachos td.num {
   display: inline-flex;
   gap: var(--esp-2);
   align-items: center;
+}
+
+/* Pie del form de despacho: acciones a la derecha, Cancelar primero y
+   Guardar donando el borde. El orden del DOM coincide con el visual →
+   el Tab sigue la lectura natural (orden de foco = orden visual). */
+.form-acciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--esp-3);
 }
 
 /* --- Badge de caución: comuna fuera del catálogo --- */
@@ -403,6 +396,7 @@ dialog.ficha::backdrop {
 
 .ficha-acciones {
   display: flex;
+  justify-content: flex-end;
   align-items: center;
   gap: var(--esp-3);
   margin-top: var(--esp-6);
@@ -493,4 +487,52 @@ dialog.ficha::backdrop {
 
 .busqueda {
   margin-top: var(--esp-6);
+}
+
+/* --- Filtros: la barra estructurada del historial (URL es el dueño) --- */
+
+.filtros-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--esp-3);
+  align-items: flex-end;
+  margin: var(--esp-4) 0;
+}
+
+.filtros-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-1);
+  font-size: var(--texto-1);
+  flex: 0 1 150px;
+  min-width: 120px;
+}
+
+/* El texto libre es el campo protagonista: ancho doble que el resto. */
+.filtros-q {
+  flex: 2 1 300px;
+}
+
+.filtros-grid .btn-ghost {
+  flex: none;
+  white-space: nowrap;
+}
+
+/* El pie de página: paginación por offset (Anterior/Siguiente + "página X de Y"). */
+.paginacion {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--esp-3);
+  margin: var(--esp-4) 0;
+}
+
+.paginacion button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.paginacion .muted {
+  min-width: 9rem;
+  text-align: center;
 }

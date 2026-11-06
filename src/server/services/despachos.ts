@@ -1,13 +1,20 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
-  DESPACHOS_LIMITE_LISTADO,
+  DESPACHOS_POR_PAGINA_DEFAULT,
   type DespachoBultoValues,
   type DespachoConBultosRow,
   type DespachoInsertValues,
   type DespachoRow,
   type DespachoUpdateValues,
+  type ListadoDespachosInput,
+  type PaginaDespachosRow,
 } from '~/features/despachos/schemas'
-import { parseDespachoConBultos, parseDespachoRow } from '~/features/despachos/service'
+import {
+  parseDespachoConBultos,
+  parseDespachoRow,
+  patronIlike,
+  termQPostgrest,
+} from '~/features/despachos/service'
 
 /**
  * Acceso a datos de despachos y sus bultos (SOLO-SERVIDOR).
@@ -24,17 +31,61 @@ type Db = SupabaseClient
  *  Alias "bultos_detalle" para no chocar con la columna "bultos" del despacho. */
 const CON_BULTOS = '*, bultos_detalle:despacho_bultos(numero, peso_kg)'
 
-export async function listDespachos(db: Db): Promise<DespachoConBultosRow[]> {
-  const { data, error } = await db
-    .from('despachos')
-    .select(CON_BULTOS)
-    .order('despachado_at', { ascending: false })
-    // Payload acotado: el listado no viaja completo a través de la frontera
-    // (con 10.5k filas un SELECT * sin límite asfixia el Server Function).
-    .limit(DESPACHOS_LIMITE_LISTADO)
+/** Columnas que escanea el texto libre ?q= — los mismos campos del search client-side. */
+const COLUMNAS_Q = [
+  'transporte',
+  'comuna',
+  'numero_documento',
+  'numero_guia',
+  'contacto',
+  'retirado_por',
+] as const
 
+/**
+ * Listado paginado y filtrado server-side (offset + total).
+ * El filtro dinámico vive aquí y solo aquí: cada entrada OPCIONAL agrega su
+ * condición y PostgREST las AND-a todas. La paginación es offset ADDRESSABLE
+ * (página 1-based): con el orden determinista (despachado_at desc, id desc)
+ * no hay repeticiones y el índice compuesto (despachado_at desc, id desc)
+ * sostiene el orden. El COUNT exacto acompaña la página para que la UI arme
+ * el paginador (página X de Y).
+ */
+export async function listDespachos(
+  db: Db,
+  filtros: ListadoDespachosInput,
+): Promise<PaginaDespachosRow> {
+  let consulta = db
+    .from('despachos')
+    .select(CON_BULTOS, { count: 'exact' })
+    .order('despachado_at', { ascending: false })
+    .order('id', { ascending: false })
+
+  // Texto libre: un único or-filter (una única condición OR posible desde
+  // que la paginación es offset — el keyset era quien compartía ese parámetro).
+  const texto = filtros.q ? termQPostgrest(filtros.q) : ''
+  if (texto) {
+    consulta = consulta.or(COLUMNAS_Q.map((columna) => `${columna}.ilike.*${texto}*`).join(','))
+  }
+
+  // Fronteras ya convertidas a ISO UTC por el cliente (días locales).
+  if (filtros.desde) consulta = consulta.gte('despachado_at', filtros.desde)
+  if (filtros.hasta) consulta = consulta.lt('despachado_at', filtros.hasta)
+  if (filtros.tipoDocumento) consulta = consulta.eq('tipo_documento', filtros.tipoDocumento)
+  if (filtros.transporte) consulta = consulta.ilike('transporte', patronIlike(filtros.transporte))
+  if (filtros.comuna) consulta = consulta.ilike('comuna', patronIlike(filtros.comuna))
+
+  // Página 1 → offset 0; página N → (N-1) * por página (input fresh de Zod).
+  const pagina = Math.max(1, filtros.pagina ?? 1)
+  const porPagina = filtros.porPagina ?? DESPACHOS_POR_PAGINA_DEFAULT
+  const offset = (pagina - 1) * porPagina
+  consulta = consulta.range(offset, offset + porPagina - 1)
+
+  const { data, count, error } = await consulta
   if (error) throw new Error(`No se pudieron listar los despachos: ${error.message}`)
-  return (data ?? []).map(parseDespachoConBultos)
+  return {
+    despachos: (data ?? []).map(parseDespachoConBultos),
+    total: count ?? 0,
+  }
 }
 
 export async function getDespacho(

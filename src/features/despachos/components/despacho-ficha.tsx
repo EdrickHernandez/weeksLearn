@@ -81,9 +81,6 @@ export function DespachoFicha({ despacho, onEditar, onEliminar }: DespachoFichaP
       </div>
 
       <div className="ficha-acciones">
-        <button type="button" onClick={onEditar}>
-          Editar despacho
-        </button>
         {confirmando ? (
           <div className="ficha-confirmar">
             <span>¿Eliminar este despacho?</span>
@@ -95,13 +92,18 @@ export function DespachoFicha({ despacho, onEditar, onEliminar }: DespachoFichaP
             </button>
           </div>
         ) : (
-          <button
-            type="button"
-            className="btn-ghost btn-danger-text"
-            onClick={() => setConfirmando(true)}
-          >
-            Eliminar
-          </button>
+          <>
+            <button
+              type="button"
+              className="btn-ghost btn-danger-text"
+              onClick={() => setConfirmando(true)}
+            >
+              Eliminar
+            </button>
+            <button type="button" onClick={onEditar}>
+              Editar despacho
+            </button>
+          </>
         )}
       </div>
     </>

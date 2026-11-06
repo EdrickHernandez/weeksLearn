@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { armarWorkbookJornada, nombreArchivoJornada } from './exportar-jornada'
+import { armarWorkbookJornada, nombreArchivoFiltro, nombreArchivoJornada } from './exportar-jornada'
 import type { Despacho } from './schemas'
 
 /**
@@ -40,6 +40,14 @@ describe('nombreArchivoJornada', () => {
 
   it('con días/meses de un dígito rellena con cero', () => {
     expect(nombreArchivoJornada(new Date(2026, 0, 5))).toBe('despachos-acob3-2026-01-05.xlsx')
+  })
+})
+
+describe('nombreArchivoFiltro', () => {
+  it('mismo patrón de fecha + sufijo -filtro (no se confunde con la jornada)', () => {
+    expect(nombreArchivoFiltro(new Date(2026, 10, 3))).toBe(
+      'despachos-acob3-2026-11-03-filtro.xlsx',
+    )
   })
 })
 

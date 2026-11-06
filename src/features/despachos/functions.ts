@@ -5,9 +5,11 @@ import * as repo from '~/server/services/despachos'
 import {
   createDespachoInputSchema,
   despachoIdSchema,
+  listadoDespachosInputSchema,
   updateDespachoInputSchema,
   type Despacho,
   type DespachoResult,
+  type PaginaDespachos,
   type ServiceError,
 } from './schemas'
 import {
@@ -46,21 +48,27 @@ function dbError(mensaje: string): { ok: false; error: ServiceError } {
   }
 }
 
-export const listDespachosFn = createServerFn({ method: 'GET' }).handler(
-  async (): Promise<DespachoResult<Despacho[]>> => {
+export const listDespachosFn = createServerFn({ method: 'GET' })
+  .validator(listadoDespachosInputSchema)
+  .handler(async ({ data }): Promise<DespachoResult<PaginaDespachos>> => {
     const user = await getUser()
     if (!user) return unauthorized()
 
     try {
       const db = getSupabaseServerClient()
-      const rows = await repo.listDespachos(db)
-      return { ok: true, data: rows.map(toDespacho) }
+      // Los filtros ya llegaron validados y normalizados (fronteras ISO UTC,
+      // página 1-based). El repo los compone en la query PostgREST y trae
+      // el COUNT total para armar el paginador.
+      const pagina = await repo.listDespachos(db, data)
+      return {
+        ok: true,
+        data: { despachos: pagina.despachos.map(toDespacho), total: pagina.total },
+      }
     } catch (error) {
       console.error('[despachos] list falló:', error)
       return dbError('No se pudieron cargar los despachos. Intenta de nuevo.')
     }
-  },
-)
+  })
 
 export const getDespachoFn = createServerFn({ method: 'GET' })
   .validator(despachoIdSchema)

@@ -424,15 +424,15 @@ export function DespachoForm({
         </p>
       ) : null}
 
-      <div className="row-actions">
-        <button type="submit" disabled={pending}>
-          {pending ? 'Guardando…' : 'Guardar'}
-        </button>
+      <div className="form-acciones">
         {mostrarCancelar ? (
           <button type="button" className="btn-ghost" onClick={onCancelar} disabled={pending}>
             Cancelar
           </button>
         ) : null}
+        <button type="submit" disabled={pending}>
+          {pending ? 'Guardando…' : 'Guardar'}
+        </button>
       </div>
     </form>
   )

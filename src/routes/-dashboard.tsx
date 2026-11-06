@@ -3,23 +3,24 @@ import { Link, useRouter } from '@tanstack/react-router'
 import { signOutFn } from '~/features/auth/functions'
 import { useSessionQuery } from '~/features/auth/queries/use-session'
 import { DespachoApiError } from '~/features/despachos/unwrap'
-import type { Despacho, DespachoInput } from '~/features/despachos/schemas'
-import { DESPACHOS_LIMITE_LISTADO } from '~/features/despachos/schemas'
+import type { Despacho, DespachoFiltrosUrl, DespachoInput } from '~/features/despachos/schemas'
+import { DESPACHOS_POR_PAGINA_DEFAULT } from '~/features/despachos/schemas'
 import { useCreateDespachoMutation } from '~/features/despachos/mutations/use-create-despacho'
 import { useDeleteDespachoMutation } from '~/features/despachos/mutations/use-delete-despacho'
 import { useUpdateDespachoMutation } from '~/features/despachos/mutations/use-update-despacho'
+import { BuscadorFiltros } from '~/features/despachos/components/buscador-filtros'
 import { DespachoForm } from '~/features/despachos/components/despacho-form'
 import { DespachoFicha } from '~/features/despachos/components/despacho-ficha'
 import { DespachoFila } from '~/features/despachos/components/despacho-fila'
-import { DespachosTable } from '~/features/despachos/components/despachos-table'
+import { DespachosLista } from '~/features/despachos/components/despachos-lista'
 import { useDespachosQuery } from '~/features/despachos/queries/use-despachos'
-import { exportarJornada } from '~/features/despachos/exportar-jornada'
+import { exportarFiltro, exportarJornada } from '~/features/despachos/exportar-jornada'
 import {
   despachosDelDia,
   extractTransporteSuggestions,
   formatoFechaJornada,
   formatClp,
-  searchDespachos,
+  hayFiltrosActivos,
   sumValorClp,
 } from '~/features/despachos/service'
 import { Route } from './index'
@@ -27,6 +28,9 @@ import { Route } from './index'
 type ModoForm = { modo: 'cerrado' } | { modo: 'crear' }
 
 type Ficha = { despacho: Despacho; editando: boolean }
+
+/** Página vacía compartida: referencialmente estable para los memo. */
+const EMPTY: Despacho[] = []
 
 function mensajeDeError(error: unknown): string {
   if (error instanceof DespachoApiError) {
@@ -59,9 +63,25 @@ function BarraSesion() {
 }
 
 export function DashboardPage() {
-  const { q } = Route.useSearch()
+  // Filtros de búsqueda: la URL es el dueño (validateSearch con Zod).
+  const filtros = Route.useSearch()
   const navigate = Route.useNavigate()
-  const { data: despachos, isPending, isError, error, refetch } = useDespachosQuery()
+  // Una sola definición de "hay búsqueda": la misma que usa validateSearch.
+  const hayFiltros = hayFiltrosActivos(filtros)
+
+  // Panel de filtros detrás del botón "Filtro" (jornada limpia por defecto).
+  // Arranca abierto si la URL ya trae filtros activos: resultados filtrados
+  // con sus criterios ocultos dejarían al operador sin línea de salida.
+  const [filtrosAbierto, setFiltrosAbierto] = React.useState(hayFiltros)
+  const { data, isPending, isFetching, isError, error, refetch } = useDespachosQuery(filtros)
+
+  // Página plana + total del COUNT (viajan juntos desde la Server Function).
+  // useMemo: cada render recrearía el `?? EMPTY` y rompería los memo aguas abajo.
+  const despachos = React.useMemo(() => data?.despachos ?? EMPTY, [data])
+  const total = data?.total ?? 0
+  const paginaActual = filtros.pagina ?? 1
+  const porPagina = filtros.porPagina ?? DESPACHOS_POR_PAGINA_DEFAULT
+  const totalPaginas = Math.max(1, Math.ceil(total / porPagina))
 
   const crear = useCreateDespachoMutation()
   const actualizar = useUpdateDespachoMutation()
@@ -98,16 +118,25 @@ export function DashboardPage() {
   // async, así que no puede decidirse en el useState inicial: se ajusta
   // DURANTE el render (patrón "adjust state on props change" de React),
   // una sola vez. Si el usuario lo cierra, la jornada queda con su botón.
+  // Con filtros activos el vacío es elecciones del filtro, no falta de
+  // trabajo: no se auto-abre el form.
   const [autoAbierto, setAutoAbierto] = React.useState(false)
-  if (despachos && despachos.length === 0 && !autoAbierto && form.modo === 'cerrado') {
+  if (
+    !isPending &&
+    !isError &&
+    despachos.length === 0 &&
+    !hayFiltros &&
+    !autoAbierto &&
+    form.modo === 'cerrado'
+  ) {
     setAutoAbierto(true)
     setForm({ modo: 'crear' })
   }
 
-  const filtrados = React.useMemo(() => searchDespachos(despachos ?? [], q ?? ''), [despachos, q])
-
+  // Los resultados son server-side: lo que llega es lo filtrado, nada de
+  // refiltrar el cache en el cliente.
   const sugerenciasTransporte = React.useMemo(
-    () => extractTransporteSuggestions(despachos ?? []),
+    () => extractTransporteSuggestions(despachos),
     [despachos],
   )
 
@@ -119,19 +148,37 @@ export function DashboardPage() {
     crear.mutate(input, { onSuccess: () => setForm({ modo: 'cerrado' }) })
   }
 
-  function cambiarFiltro(valor: string) {
-    const limpio = valor.trim()
-    void navigate({ search: limpio ? { q: limpio } : {}, replace: true })
+  /** Commitea cambios de filtro a la URL (los valida validateSearch).
+   *  Todo cambio reinicia la página: una página válida con los filtros
+   *  anteriores puede ser vacía con los nuevos (offset fuera de rango). */
+  function cambiarFiltros(cambios: Partial<DespachoFiltrosUrl>) {
+    void navigate({
+      search: (previo) => ({ ...previo, ...cambios, pagina: undefined }),
+      replace: true,
+    })
   }
 
-  const hayFiltro = Boolean(q)
+  /** Cambia de página CONSERVANDO los filtros; la página 1 no ensucia la URL. */
+  function cambiarPagina(paginaNueva: number) {
+    void navigate({
+      search: (previo) => ({ ...previo, pagina: paginaNueva > 1 ? paginaNueva : undefined }),
+      replace: true,
+    })
+  }
+
+  function limpiarFiltros() {
+    void navigate({ search: {}, replace: true })
+  }
 
   /**
    * Modelo de pantalla:
-   * - Form de creación → pantalla completa (la tarea principal).
+   * - Default → jornada: header + lista del día, sin filas cuando hay
+   *   filtro activo (la búsqueda manda).
+   * - Click en "Filtro" → panel de filtros + sección búsqueda.
    * - Click en fila → ficha en <dialog>: ver todo, editar (el MISMO
    *   DespachoForm montado dentro) o eliminar. Click fuera / Escape → cerrar.
-   * - Default → solo la jornada; historial solo bajo búsqueda activa.
+   * - Exportar exporta lo que hay en pantalla: jornada si no hay filtros,
+   *   resultados filtrados si los hay.
    */
   return (
     <main className="container">
@@ -160,15 +207,37 @@ export function DashboardPage() {
               </p>
             </div>
             <div className="jornada-acciones">
-              {delDia.length > 0 && (
+              {/* Exporta lo que hay en pantalla: la jornada si no hay
+                  filtros, el resultado filtrado si los hay (nombre con
+                  sufijo -filtro para no confundir los archivos). */}
+              {(hayFiltros ? despachos.length > 0 : delDia.length > 0) && (
                 <button
                   type="button"
-                  onClick={() => void exportarJornada(delDia, ahora)}
-                  title="Descarga el Excel de la jornada de hoy"
+                  onClick={() =>
+                    void (hayFiltros
+                      ? exportarFiltro(despachos, ahora)
+                      : exportarJornada(delDia, ahora))
+                  }
+                  title={
+                    hayFiltros
+                      ? 'Descarga el Excel de los despachos filtrados'
+                      : 'Descarga el Excel de la jornada de hoy'
+                  }
                 >
                   Exportar
                 </button>
               )}
+              {/* El panel vive fuera de este <header> (desplegable de la
+                  jornada); el id lo ancora para aria-expanded/controls. */}
+              <button
+                type="button"
+                onClick={() => setFiltrosAbierto((abierto) => !abierto)}
+                aria-expanded={filtrosAbierto}
+                aria-controls="panel-filtros"
+                title="Mostrar u ocultar los filtros de búsqueda"
+              >
+                Filtro
+              </button>
               <button
                 type="button"
                 onClick={() => setForm({ modo: 'crear' })}
@@ -178,6 +247,18 @@ export function DashboardPage() {
               </button>
             </div>
           </header>
+
+          {/* Despliegue condicional (monta/desmonta): cada apertura re-leerá
+              los borradores desde la URL, sin estado residual. */}
+          {filtrosAbierto ? (
+            <div id="panel-filtros">
+              <BuscadorFiltros
+                filtros={filtros}
+                onCambiar={cambiarFiltros}
+                onLimpiar={limpiarFiltros}
+              />
+            </div>
+          ) : null}
 
           {isError ? (
             <div className="card" role="alert">
@@ -198,13 +279,15 @@ export function DashboardPage() {
             </p>
           ) : (
             <>
-              {delDia.length > 0 ? (
+              {/* La jornada vive en la pantalla principal y desaparece al
+                  filtrar: el operador está buscando el historial, no el hoy. */}
+              {!hayFiltros && delDia.length > 0 ? (
                 <section className="jornada-lista" aria-label="Despachos de hoy">
                   {/* Cabecera visual de columnas (solo guía al ojo): los
                       lectores de pantalla obtienen el contenido de las celdas,
                       que se describen solas. */}
                   <div className="fila-despacho fila-cabecera" aria-hidden="true">
-                    <span>Hora</span>
+                    <span>Fecha</span>
                     <span>Doc.</span>
                     <span>Guía</span>
                     <span>Transporte</span>
@@ -221,41 +304,52 @@ export function DashboardPage() {
               ) : null}
 
               <section className="busqueda" aria-label="Buscar en el historial">
-                <div className="toolbar">
-                  <input
-                    type="search"
-                    value={q ?? ''}
-                    onChange={(e) => cambiarFiltro(e.target.value)}
-                    placeholder="Buscar en el historial: N° doc, N° guía, transporte, comuna…"
-                    aria-label="Buscar despachos"
-                  />
-                </div>
-
-                {hayFiltro ? (
+                {hayFiltros ? (
                   <>
-                    {despachos.length === DESPACHOS_LIMITE_LISTADO ? (
-                      <p className="muted">
-                        Mostrando los {DESPACHOS_LIMITE_LISTADO} despachos más recientes. Usa el
-                        filtro para acotar la búsqueda.
-                      </p>
-                    ) : null}
-
                     <p className="muted" aria-live="polite">
-                      {filtrados.length} de {despachos.length} despachos
+                      {total > despachos.length
+                        ? `Mostrando ${despachos.length} de ${total} despachos${isFetching ? '…' : ''}`
+                        : `${total === 1 ? '1 despacho' : `${total} despachos`}`}
                     </p>
 
-                    {filtrados.length === 0 ? (
+                    {despachos.length === 0 ? (
                       <p className="card" role="status">
-                        Sin resultados para «{q}» — prueba con otro término.
+                        Sin resultados para tu búsqueda — revisa los filtros o limpia y prueba de
+                        nuevo.
                       </p>
                     ) : (
-                      <DespachosTable
-                        despachos={filtrados}
-                        eliminandoId={eliminar.isPending ? (eliminar.variables ?? null) : null}
-                        onEditar={(despacho) => setFicha({ despacho, editando: false })}
-                        onEliminar={(id) => eliminar.mutate(id)}
-                      />
+                      /* El filtrado y la paginación corren en PostgreSQL:
+                         la lista muestra la página ?pagina=N, del más
+                         reciente al más antiguo. La fila entera abre la
+                         ficha — Editar/Eliminar viven en la ficha. */
+                      <DespachosLista despachos={despachos} onAbrirFicha={abrirFicha} />
                     )}
+
+                    {/* Paginación por offset en la URL (?pagina=N): FUERA de
+                        la rama de resultados — una página fuera de rango
+                        (URL forjada o filtros cambiados a mano) muestra la
+                        lista vacía PERO conserva el paginador para escapar. */}
+                    {total > porPagina || paginaActual > 1 ? (
+                      <div className="paginacion" role="navigation" aria-label="Paginación">
+                        <button
+                          type="button"
+                          onClick={() => cambiarPagina(paginaActual - 1)}
+                          disabled={paginaActual <= 1 || isFetching}
+                        >
+                          Anterior
+                        </button>
+                        <span className="muted" aria-live="polite">
+                          Página {paginaActual} de {totalPaginas}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => cambiarPagina(paginaActual + 1)}
+                          disabled={paginaActual >= totalPaginas || isFetching}
+                        >
+                          Siguiente
+                        </button>
+                      </div>
+                    ) : null}
                   </>
                 ) : null}
               </section>
