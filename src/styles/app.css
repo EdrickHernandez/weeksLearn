@@ -79,16 +79,28 @@ button:disabled {
    ENTRADAS — papel con borde de regla
    ============================================================ */
 
-input,
+/* Solo los inputs de una línea — estilizados por TIPO, no por elemento:
+   si mañana nace un checkbox, no hereda el look de barra gigante. La
+   altura fija normaliza input y select (que el navegador mide distinto). */
+input:where(
+  [type='text'],
+  [type='email'],
+  [type='tel'],
+  [type='number'],
+  [type='search'],
+  [type='datetime-local'],
+  [type='password']
+),
 select {
   font: inherit;
-  padding: 0.4rem 0.6rem;
+  padding: 0 var(--esp-3);
   border: 1px solid var(--linea);
   border-radius: var(--radio);
   background: var(--papel);
   color: var(--tinta);
   width: 100%;
   max-width: 320px;
+  height: 2.5rem;
 }
 
 /* ============================================================
