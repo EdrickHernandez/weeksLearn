@@ -1,4 +1,5 @@
 import comunas from './data/comunas.json'
+import { parsePhoneNumberFromString } from 'libphonenumber-js/min'
 import {
   despachoConBultosRowSchema,
   despachoRowSchema,
@@ -107,10 +108,22 @@ export function normalizeTransporte(raw: string): string {
  * Limpia un teléfono: conserva dígitos y un único "+" inicial.
  * "(+56) 9 1234-5678" → "+56912345678". Vacío → null.
  */
+/**
+ * Normaliza el teléfono a su forma canónica E.164 ("+56912345678"):
+ * un mismo número deja de existir como "+569 1234-5678", "912345678"
+ * y "+56912345678" en la base. Solo corre DESPUÉS de que el schema
+ * validó el crudo (fail-fast: si algo invalido llega acá, es un bug
+ * del pipeline y grita — no se silencia con null).
+ */
 export function normalizeTelefono(raw: string | undefined): string | null {
-  if (raw === undefined) return null
-  const soloValidos = raw.replace(/[^\d+]/g, '').replace(/(?!^)\+/g, '')
-  return soloValidos.length > 0 ? soloValidos : null
+  if (raw === undefined || raw.trim() === '') return null // sin teléfono
+  const parsed = parsePhoneNumberFromString(raw, 'CL')
+  if (!parsed || !parsed.isValid() || parsed.country !== 'CL') {
+    throw new Error(
+      `normalizeTelefono: teléfono inválido ("${raw}") — el schema debía rechazarlo antes`,
+    )
+  }
+  return parsed.number
 }
 
 /** Formatea un monto entero en pesos chilenos: 1234567 → "$1.234.567". */

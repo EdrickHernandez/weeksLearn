@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { parsePhoneNumberFromString } from 'libphonenumber-js/min'
 
 /**
  * Esquemas Zod de la feature despachos: ÚNICA fuente de verdad de tipos.
@@ -25,6 +26,24 @@ export const fechaDespachoSchema = z
     'Fecha y hora del despacho inválida',
   )
 
+/**
+ * Teléfono de contacto: acepta móviles y fijos CHILENOS en formatos comunes
+ * ("+56912345678", "912345678", "+56 2 2123 4567"…). La validación usa la
+ * base de metadatos del proyecto google/libphonenumber vía su puerto JS.
+ * Vacío ("" o ausente) = sin teléfono. El país se fija en CL: números
+ * válidos de otros países no pasan el check.
+ */
+export const telefonoSchema = z
+  .string()
+  .trim()
+  .max(30, 'El teléfono es demasiado largo')
+  .optional()
+  .refine((valor) => {
+    if (valor === undefined || valor === '') return true // sin teléfono
+    const parsed = parsePhoneNumberFromString(valor, 'CL')
+    return !!parsed && parsed.isValid() && parsed.country === 'CL'
+  }, 'Ingresa un teléfono chileno válido (móvil o fijo), ej: +56912345678')
+
 /** Objeto base SIN refinar: el update necesita .extend() y superRefine lo bloquea. */
 const despachoInputBase = z.object({
   despachadoAt: fechaDespachoSchema,
@@ -44,7 +63,7 @@ const despachoInputBase = z.object({
     .array(z.number().min(0, 'El peso no puede ser negativo').max(50_000))
     .min(1, 'Registra el peso de al menos un bulto'),
   direccion: z.string().trim().max(200).optional(),
-  telefono: z.string().trim().max(30).optional(),
+  telefono: telefonoSchema,
   contacto: z.string().trim().max(120).optional(),
   retiradoPor: z.string().trim().max(120).optional(),
   vehiculo: vehiculoSchema.optional(),

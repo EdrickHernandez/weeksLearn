@@ -105,15 +105,24 @@ describe('normalizeComuna', () => {
   })
 })
 
-describe('normalizeTelefono', () => {
-  it('conserva dígitos y un único + inicial', () => {
+describe('normalizeTelefono (canónico E.164 con libphonenumber)', () => {
+  it('los formatos comunes convergen al MISMO canónico', () => {
+    // "un mismo número = un solo registro en la base" — el objetivo del cambio.
     expect(normalizeTelefono('(+56) 9 1234-5678')).toBe('+56912345678')
-    expect(normalizeTelefono('9-1234-5678')).toBe('912345678')
+    expect(normalizeTelefono('+56912345678')).toBe('+56912345678')
+    expect(normalizeTelefono('912345678')).toBe('+56912345678') // nacional: default CL
+    expect(normalizeTelefono('+56 2 2123 4567')).toBe('+56221234567') // fijo válido
   })
 
-  it('vacío o undefined → null', () => {
+  it('vacío o undefined → null (sin teléfono)', () => {
     expect(normalizeTelefono(undefined)).toBeNull()
     expect(normalizeTelefono('   ')).toBeNull()
+  })
+
+  it('un número inválido GRITE (el schema debió rechazarlo antes)', () => {
+    // Fail-fast: si llega acá, es un bug del pipeline, no un dato a tolerar.
+    expect(() => normalizeTelefono('123')).toThrow(/inválido/)
+    expect(() => normalizeTelefono('+59991234567')).toThrow(/inválido/) // válido, pero NO de Chile
   })
 })
 
@@ -468,6 +477,28 @@ describe('schemas', () => {
     delete minimo.direccion
     delete minimo.telefono
     expect(despachoInputSchema.safeParse(minimo).success).toBe(true)
+  })
+})
+
+describe('telefonoSchema — CL móvil y fijo (libphonenumber)', () => {
+  const parseTelefono = (telefono: string | undefined) =>
+    createDespachoInputSchema.safeParse({ ...inputBase, telefono }).success
+
+  it('acepta móviles y fijos chilenos en formatos comunes', () => {
+    expect(parseTelefono('+56912345678')).toBe(true)
+    expect(parseTelefono('912345678')).toBe(true) // nacional, default CL
+    expect(parseTelefono('+56 2 2123 4567')).toBe(true) // fijo
+  })
+
+  it('acepta ausencia y "" (sin teléfono)', () => {
+    expect(parseTelefono(undefined)).toBe(true)
+    expect(parseTelefono('')).toBe(true)
+  })
+
+  it('rechaza inválidos y números extranjeros válidos', () => {
+    expect(parseTelefono('123')).toBe(false)
+    expect(parseTelefono('hola')).toBe(false)
+    expect(parseTelefono('+34 912345678')).toBe(false) // válido, pero de España
   })
 })
 
