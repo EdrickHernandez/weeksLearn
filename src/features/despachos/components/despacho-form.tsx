@@ -130,6 +130,14 @@ export type DespachoFormProps = {
   mostrarCancelar?: boolean
 }
 
+/**
+ * Tres momentos de validación con UNA sola fuente de verdad (Zod):
+ *   onChange → transporte del valor (cada tecla llega al estado).
+ *   onBlur   → revisión del campo que se abandona: error temprano, sin
+ *              esperar el submit. La regla cruzada bultos↔pesos vive acá
+ *              en su versión "en vivo".
+ *   submit   → el muro final: schema completo + reglas cruzadas oficiales.
+ */
 export function DespachoForm({
   despacho,
   sugerenciasTransporte,
@@ -148,8 +156,23 @@ export function DespachoForm({
     refNumeroDocumento.current?.focus()
   }, [])
 
-  const set = (campo: keyof FormState) => (valor: string) =>
+  /* ------ helpers de estado ------ */
+
+  const set = (campo: keyof FormState) => (valor: string) => {
     setState((previo) => ({ ...previo, [campo]: valor }))
+    // Error vivo: si el campo estaba marcado y el usuario corrige, se perdona
+    // mientras escribe — el próximo blur (o Guardar) re-verifica.
+    limpiarError(campo)
+  }
+
+  function limpiarError(clave: string) {
+    setErrores((previo) => {
+      if (!(clave in previo)) return previo
+      const proximo = { ...previo }
+      delete proximo[clave]
+      return proximo
+    })
+  }
 
   /** Cambia la cantidad de bultos y redimensiona los pesos, conservando lo escrito. */
   const setBultos = (valor: string) => {
@@ -160,13 +183,74 @@ export function DespachoForm({
       pesos.length = cantidad
       return { ...previo, bultos: valor, pesosKg: pesos }
     })
+    limpiarError('bultos')
   }
 
-  const setPesoBulto = (indice: number) => (valor: string) =>
+  const setPesoBulto = (indice: number) => (valor: string) => {
     setState((previo) => ({
       ...previo,
       pesosKg: previo.pesosKg.map((peso, i) => (i === indice ? valor : peso)),
     }))
+    limpiarError(`pesosKg.${indice}`)
+  }
+
+  /* ------ validación temprana (onBlur) ------ */
+
+  /** Revisa el par cruzado bultos ↔ pesos con el estado ACTUAL del render. */
+  function validarParBultosYPesos() {
+    setErrores((previo) => {
+      const proximo = { ...previo }
+      const cantidad = Number(state.bultos)
+      const parCoherente =
+        state.bultos !== '' && Number.isFinite(cantidad) && cantidad === state.pesosKg.length
+      if (!parCoherente) {
+        proximo['bultos'] = `Hay ${state.pesosKg.length} bultos pero ${
+          state.pesosKg.length === 1 ? '1 peso' : `${state.pesosKg.length} pesos`
+        } registrados`
+      } else {
+        delete proximo['bultos']
+      }
+      // Cada peso se revisa una por una (mismos límites que el schema).
+      state.pesosKg.forEach((raw, indice) => {
+        const limite = Number(raw)
+        if (raw.trim() === '') {
+          proximo[`pesosKg.${indice}`] = 'Registra el peso del bulto'
+        } else if (!Number.isFinite(limite) || limite < 0 || limite > 50_000) {
+          proximo[`pesosKg.${indice}`] = 'Peso inválido (0 a 50.000 kg)'
+        } else {
+          delete proximo[`pesosKg.${indice}`]
+        }
+      })
+      return proximo
+    })
+  }
+
+  /** Valida UN campo contra su pedazo del schema (la fuente única). */
+  function validarCampo(campo: keyof FormState) {
+    if (campo === 'bultos' || campo === 'pesosKg') {
+      validarParBultosYPesos()
+      return
+    }
+    try {
+      const input = aDespachoInput(state)
+      const resultado = despachoInputSchema.shape[campo].safeParse(input[campo])
+      setErrores((previo) => {
+        const proximo = { ...previo }
+        if (resultado.success) {
+          delete proximo[campo]
+        } else {
+          proximo[campo] ??= resultado.error.issues[0].message
+        }
+        return proximo
+      })
+    } catch {
+      // aDespachoInput lanza solo si la fecha no es interpretable por Date.
+      setErrores((previo) => ({
+        ...previo,
+        [campo]: campo === 'despachadoAt' ? 'Fecha y hora inválida' : 'Valor inválido',
+      }))
+    }
+  }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -201,6 +285,7 @@ export function DespachoForm({
             type="datetime-local"
             value={state.despachadoAt}
             onChange={(e) => set('despachadoAt')(e.target.value)}
+            onBlur={() => validarCampo('despachadoAt')}
             required
             disabled={pending}
           />
@@ -214,6 +299,7 @@ export function DespachoForm({
           <select
             value={state.tipoDocumento}
             onChange={(e) => set('tipoDocumento')(e.target.value)}
+            onBlur={() => validarCampo('tipoDocumento')}
             disabled={pending}
           >
             {TIPOS_DOCUMENTO.map((t) => (
@@ -222,6 +308,9 @@ export function DespachoForm({
               </option>
             ))}
           </select>
+          {errores.tipoDocumento ? (
+            <span className="field-error">{errores.tipoDocumento}</span>
+          ) : null}
         </label>
 
         <label>
@@ -230,6 +319,7 @@ export function DespachoForm({
             ref={refNumeroDocumento}
             value={state.numeroDocumento}
             onChange={(e) => set('numeroDocumento')(e.target.value)}
+            onBlur={() => validarCampo('numeroDocumento')}
             placeholder="F-001"
             required
             disabled={pending}
@@ -244,6 +334,7 @@ export function DespachoForm({
           <input
             value={state.numeroGuia}
             onChange={(e) => set('numeroGuia')(e.target.value)}
+            onBlur={() => validarCampo('numeroGuia')}
             placeholder="G-100"
             required
             disabled={pending}
@@ -257,6 +348,7 @@ export function DespachoForm({
             list="sugerencias-transporte"
             value={state.transporte}
             onChange={(e) => set('transporte')(e.target.value)}
+            onBlur={() => validarCampo('transporte')}
             placeholder="Starken, Chilexpress…"
             required
             disabled={pending}
@@ -275,6 +367,7 @@ export function DespachoForm({
             list="sugerencias-comuna"
             value={state.comuna}
             onChange={(e) => set('comuna')(e.target.value)}
+            onBlur={() => validarCampo('comuna')}
             placeholder="Providencia…"
             required
             disabled={pending}
@@ -295,6 +388,7 @@ export function DespachoForm({
             step="1"
             value={state.valorClp}
             onChange={(e) => set('valorClp')(e.target.value)}
+            onBlur={() => validarCampo('valorClp')}
             placeholder="25000"
             required
             disabled={pending}
@@ -311,13 +405,11 @@ export function DespachoForm({
             step="1"
             value={state.bultos}
             onChange={(e) => setBultos(e.target.value)}
+            onBlur={() => validarCampo('bultos')}
             required
             disabled={pending}
           />
           {errores.bultos ? <span className="field-error">{errores.bultos}</span> : null}
-          {errores.pesosKg && !errores.bultos ? (
-            <span className="field-error">{errores.pesosKg}</span>
-          ) : null}
         </label>
 
         <label>
@@ -325,6 +417,7 @@ export function DespachoForm({
           <select
             value={state.tipoEmbalaje}
             onChange={(e) => set('tipoEmbalaje')(e.target.value)}
+            onBlur={() => validarCampo('tipoEmbalaje')}
             disabled={pending}
           >
             {TIPOS_EMBALAJE.map((t) => (
@@ -344,6 +437,7 @@ export function DespachoForm({
               step="0.01"
               value={peso}
               onChange={(e) => setPesoBulto(indice)(e.target.value)}
+              onBlur={() => validarCampo('pesosKg')}
               placeholder={state.tipoEmbalaje === 'pallet' ? '0.00 (pallet)' : '12.5'}
               required
               disabled={pending}
@@ -359,9 +453,11 @@ export function DespachoForm({
           <input
             value={state.direccion}
             onChange={(e) => set('direccion')(e.target.value)}
+            onBlur={() => validarCampo('direccion')}
             placeholder="Av. Providencia 123"
             disabled={pending}
           />
+          {errores.direccion ? <span className="field-error">{errores.direccion}</span> : null}
         </label>
 
         <label>
@@ -370,9 +466,11 @@ export function DespachoForm({
             type="tel"
             value={state.telefono}
             onChange={(e) => set('telefono')(e.target.value)}
+            onBlur={() => validarCampo('telefono')}
             placeholder="+56912345678"
             disabled={pending}
           />
+          {errores.telefono ? <span className="field-error">{errores.telefono}</span> : null}
         </label>
 
         <label>
@@ -380,9 +478,11 @@ export function DespachoForm({
           <input
             value={state.contacto}
             onChange={(e) => set('contacto')(e.target.value)}
+            onBlur={() => validarCampo('contacto')}
             placeholder="Juan Pérez"
             disabled={pending}
           />
+          {errores.contacto ? <span className="field-error">{errores.contacto}</span> : null}
         </label>
 
         <label>
@@ -391,6 +491,7 @@ export function DespachoForm({
             list="sugerencias-retiro"
             value={state.retiradoPor}
             onChange={(e) => set('retiradoPor')(e.target.value)}
+            onBlur={() => validarCampo('retiradoPor')}
             placeholder="Nombre de quien retira"
             disabled={pending}
           />
@@ -399,6 +500,7 @@ export function DespachoForm({
               <option key={nombre} value={nombre} />
             ))}
           </datalist>
+          {errores.retiradoPor ? <span className="field-error">{errores.retiradoPor}</span> : null}
         </label>
 
         <label>
@@ -406,6 +508,7 @@ export function DespachoForm({
           <select
             value={state.vehiculo}
             onChange={(e) => set('vehiculo')(e.target.value)}
+            onBlur={() => validarCampo('vehiculo')}
             disabled={pending}
           >
             <option value="">—</option>
@@ -415,6 +518,7 @@ export function DespachoForm({
               </option>
             ))}
           </select>
+          {errores.vehiculo ? <span className="field-error">{errores.vehiculo}</span> : null}
         </label>
       </div>
 
