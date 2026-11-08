@@ -126,6 +126,25 @@ export function normalizeTelefono(raw: string | undefined): string | null {
   return parsed.number
 }
 
+/**
+ * Formato de LECTURA para humanos. Los metadatos de CL no traen patrones
+ * de agrupación para móviles (formatNational devuelve la tira cruda), así
+ * que la presentación a la chilena es nuestra:
+ *   móvil  (+56 9 XXXX XXXX) → "9 1234 5678"   (el caso dominante)
+ *   fijo   → formatNational (los metadatos SÍ tienen patrón: "(2) 2123 4567")
+ * No parseable → crudo (tolerante con el legacy importado).
+ */
+export function formatoTelefono(telefono: string | null | undefined): string | null {
+  if (!telefono) return null
+  const parsed = parsePhoneNumberFromString(telefono, 'CL')
+  if (!parsed || !parsed.isValid() || parsed.country !== 'CL') return telefono
+  const nacional = parsed.nationalNumber
+  if (nacional.length === 9 && nacional.startsWith('9')) {
+    return `9 ${nacional.slice(1, 5)} ${nacional.slice(5)}`
+  }
+  return parsed.formatNational()
+}
+
 /** Formatea un monto entero en pesos chilenos: 1234567 → "$1.234.567". */
 export function formatClp(valor: number): string {
   return new Intl.NumberFormat('es-CL', {

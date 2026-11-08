@@ -7,6 +7,7 @@ import {
   extractTransporteSuggestions,
   finDiaLocalIso,
   formatoFechaJornada,
+  formatoTelefono,
   formatClp,
   hayFiltrosActivos,
   inicioDiaLocalIso,
@@ -499,6 +500,28 @@ describe('telefonoSchema — CL móvil y fijo (libphonenumber)', () => {
     expect(parseTelefono('123')).toBe(false)
     expect(parseTelefono('hola')).toBe(false)
     expect(parseTelefono('+34 912345678')).toBe(false) // válido, pero de España
+  })
+})
+
+describe('formatoTelefono (formato de LECTURA, humano)', () => {
+  it('el canónico E.164 y los formatos legacy convergen al formato nacional', () => {
+    // El historial importado mezcla formatos viejos: la vista los iguala.
+    expect(formatoTelefono('+56912345678')).toBe('9 1234 5678')
+    expect(formatoTelefono('56912345678')).toBe('9 1234 5678') // legacy sin +
+    expect(formatoTelefono('9-1234-5678')).toBe('9 1234 5678')
+    // Fijo: los metadatos SÍ agrupan fijos (área entre paréntesis) — solo
+    // los móviles van crudos y los formateamos nosotros.
+    expect(formatoTelefono('+56221234567')).toBe('(2) 2123 4567')
+  })
+
+  it('sin teléfono → null', () => {
+    expect(formatoTelefono(null)).toBeNull()
+    expect(formatoTelefono(undefined)).toBeNull()
+    expect(formatoTelefono('')).toBeNull()
+  })
+
+  it('dato no parseable se muestra CRUDO (tolerante con el legacy)', () => {
+    expect(formatoTelefono('dato-raro')).toBe('dato-raro')
   })
 })
 
