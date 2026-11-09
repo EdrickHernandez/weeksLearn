@@ -1,4 +1,5 @@
 import comunas from './data/comunas.json'
+import { parsePhoneNumberFromString } from 'libphonenumber-js/min'
 import {
   despachoConBultosRowSchema,
   despachoRowSchema,
@@ -107,10 +108,41 @@ export function normalizeTransporte(raw: string): string {
  * Limpia un teléfono: conserva dígitos y un único "+" inicial.
  * "(+56) 9 1234-5678" → "+56912345678". Vacío → null.
  */
+/**
+ * Normaliza el teléfono a su forma canónica E.164 ("+56912345678"):
+ * un mismo número deja de existir como "+569 1234-5678", "912345678"
+ * y "+56912345678" en la base. Solo corre DESPUÉS de que el schema
+ * validó el crudo (fail-fast: si algo invalido llega acá, es un bug
+ * del pipeline y grita — no se silencia con null).
+ */
 export function normalizeTelefono(raw: string | undefined): string | null {
-  if (raw === undefined) return null
-  const soloValidos = raw.replace(/[^\d+]/g, '').replace(/(?!^)\+/g, '')
-  return soloValidos.length > 0 ? soloValidos : null
+  if (raw === undefined || raw.trim() === '') return null // sin teléfono
+  const parsed = parsePhoneNumberFromString(raw, 'CL')
+  if (!parsed || !parsed.isValid() || parsed.country !== 'CL') {
+    throw new Error(
+      `normalizeTelefono: teléfono inválido ("${raw}") — el schema debía rechazarlo antes`,
+    )
+  }
+  return parsed.number
+}
+
+/**
+ * Formato de LECTURA para humanos. Los metadatos de CL no traen patrones
+ * de agrupación para móviles (formatNational devuelve la tira cruda), así
+ * que la presentación a la chilena es nuestra:
+ *   móvil  (+56 9 XXXX XXXX) → "9 1234 5678"   (el caso dominante)
+ *   fijo   → formatNational (los metadatos SÍ tienen patrón: "(2) 2123 4567")
+ * No parseable → crudo (tolerante con el legacy importado).
+ */
+export function formatoTelefono(telefono: string | null | undefined): string | null {
+  if (!telefono) return null
+  const parsed = parsePhoneNumberFromString(telefono, 'CL')
+  if (!parsed || !parsed.isValid() || parsed.country !== 'CL') return telefono
+  const nacional = parsed.nationalNumber
+  if (nacional.length === 9 && nacional.startsWith('9')) {
+    return `9 ${nacional.slice(1, 5)} ${nacional.slice(5)}`
+  }
+  return parsed.formatNational()
 }
 
 /** Formatea un monto entero en pesos chilenos: 1234567 → "$1.234.567". */

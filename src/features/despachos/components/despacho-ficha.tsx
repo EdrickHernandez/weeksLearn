@@ -1,6 +1,6 @@
 import * as React from 'react'
 import type { Despacho } from '../schemas'
-import { formatClp, sumBultos } from '../service'
+import { formatClp, sumBultos, formatoTelefono } from '../service'
 
 const FORMATO_FECHA = new Intl.DateTimeFormat('es-CL', {
   day: '2-digit',
@@ -74,7 +74,7 @@ export function DespachoFicha({ despacho, onEditar, onEliminar }: DespachoFichaP
           {pesoTotal} kg
         </Dato>
         <Dato etiqueta="Dirección">{despacho.direccion ?? '—'}</Dato>
-        <Dato etiqueta="Teléfono">{despacho.telefono ?? '—'}</Dato>
+        <Dato etiqueta="Teléfono">{formatoTelefono(despacho.telefono) ?? '—'}</Dato>
         <Dato etiqueta="Contacto">{despacho.contacto ?? '—'}</Dato>
         <Dato etiqueta="Retiró">{despacho.retiradoPor ?? '—'}</Dato>
         <Dato etiqueta="Vehículo">{despacho.vehiculo ?? '—'}</Dato>
