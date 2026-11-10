@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { despachoInputSchema, type Despacho, type DespachoInput } from '../schemas'
-import { COMUNAS, formatClp, RETIROS_BASE } from '../service'
+import { COMUNAS, formatoMiles, RETIROS_BASE, soloDigitos } from '../service'
 
 const TIPOS_DOCUMENTO = [
   { value: 'factura', label: 'Factura' },
@@ -269,11 +269,6 @@ export function DespachoForm({
     onGuardar(parsed.data)
   }
 
-  const valorPreview =
-    Number.isFinite(Number(state.valorClp)) && state.valorClp !== ''
-      ? formatClp(Number(state.valorClp))
-      : null
-
   return (
     <form className="card" onSubmit={handleSubmit} noValidate>
       <h2>{despacho ? 'Editar despacho' : 'Nuevo despacho'}</h2>
@@ -393,16 +388,12 @@ export function DespachoForm({
         </label>
 
         <label>
-          <span className="titulo-fila">
-            Valor (CLP)
-            {valorPreview ? <span className="muted">{valorPreview}</span> : null}
-          </span>
+          Valor (CLP)
           <input
-            type="number"
-            min="1"
-            className="sin-paso"
-            value={state.valorClp}
-            onChange={(e) => set('valorClp')(e.target.value)}
+            type="text"
+            inputMode="numeric"
+            value={formatoMiles(state.valorClp)}
+            onChange={(e) => set('valorClp')(soloDigitos(e.target.value))}
             onBlur={() => validarCampo('valorClp')}
             placeholder="25000"
             required
