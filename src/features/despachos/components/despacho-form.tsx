@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { despachoInputSchema, type Despacho, type DespachoInput } from '../schemas'
-import { COMUNAS, formatoMiles, RETIROS_BASE, soloDigitos } from '../service'
+import { COMUNAS, formatoMiles, formatoTelefono, RETIROS_BASE, soloDigitos } from '../service'
 
 const TIPOS_DOCUMENTO = [
   { value: 'factura', label: 'Factura' },
@@ -67,7 +67,7 @@ function stateInicial(despacho?: Despacho | null): FormState {
       pesosKg: despacho.pesosBultos.length > 0 ? despacho.pesosBultos.map(String) : [''],
       tipoEmbalaje: despacho.tipoEmbalaje,
       direccion: despacho.direccion ?? '',
-      telefono: despacho.telefono ?? '',
+      telefono: formatoTelefono(despacho.telefono) ?? '',
       contacto: despacho.contacto ?? '',
       retiradoPor: despacho.retiradoPor ?? '',
       vehiculo: despacho.vehiculo ?? '',
@@ -315,7 +315,7 @@ export function DespachoForm({
             value={state.numeroDocumento}
             onChange={(e) => set('numeroDocumento')(e.target.value)}
             onBlur={() => validarCampo('numeroDocumento')}
-            placeholder="F-001"
+            placeholder="1.639.758"
             required
             disabled={pending}
           />
@@ -330,7 +330,7 @@ export function DespachoForm({
             value={state.numeroGuia}
             onChange={(e) => set('numeroGuia')(e.target.value)}
             onBlur={() => validarCampo('numeroGuia')}
-            placeholder="G-100"
+            placeholder="1.386.677"
             required
             disabled={pending}
           />
@@ -395,7 +395,7 @@ export function DespachoForm({
             value={formatoMiles(state.valorClp)}
             onChange={(e) => set('valorClp')(soloDigitos(e.target.value))}
             onBlur={() => validarCampo('valorClp')}
-            placeholder="25000"
+            placeholder="25.000"
             required
             disabled={pending}
           />
@@ -413,7 +413,17 @@ export function DespachoForm({
             type="tel"
             value={state.telefono}
             onChange={(e) => set('telefono')(e.target.value)}
-            onBlur={() => validarCampo('telefono')}
+            onBlur={() => {
+              // La revisión PRIMERO (sobre lo tecleado, como hoy) y luego el
+              // re-pintado en formato nacional. Directo con setState, sin el
+              // set() oficial: su perdón en vivo borraria el error recién
+              // creado — aquí no hay corrección en curso, es un cierre.
+              validarCampo('telefono')
+              const formateado = formatoTelefono(state.telefono)
+              if (formateado && formateado !== state.telefono) {
+                setState((previo) => ({ ...previo, telefono: formateado }))
+              }
+            }}
             placeholder="912345678"
             disabled={pending}
           />
