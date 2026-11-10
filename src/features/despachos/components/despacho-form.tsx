@@ -424,7 +424,11 @@ export function DespachoForm({
             placeholder="912345678"
             disabled={pending}
           />
-          {errores.telefono ? <span className="field-error">{errores.telefono}</span> : null}
+          {errores.telefono ? (
+            <span className="field-error">{errores.telefono}</span>
+          ) : (
+            <span className="muted">Ingresa los 9 dígitos (móvil o fijo)</span>
+          )}
         </label>
 
         <label>
