@@ -42,7 +42,7 @@ export const telefonoSchema = z
     if (valor === undefined || valor === '') return true // sin teléfono
     const parsed = parsePhoneNumberFromString(valor, 'CL')
     return !!parsed && parsed.isValid() && parsed.country === 'CL'
-  }, 'Ingresa un teléfono chileno válido (móvil o fijo), ej: +56912345678')
+  }, 'Ingresa un teléfono chileno válido (móvil o fijo)')
 
 /** Objeto base SIN refinar: el update necesita .extend() y superRefine lo bloquea. */
 const despachoInputBase = z.object({
