@@ -212,6 +212,29 @@ select {
   margin: var(--esp-2) 0;
 }
 
+/* Título de campo con dato vivo a la derecha (el Valor formateado al
+   teclear). baseline alinea el preview chico con el título grande. */
+.titulo-fila {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--esp-2);
+}
+
+/* El valor se teclea a mano: sin flechas de stepper (WebKit = los botones
+   nativos; Firefox/estándar = appearance textfield). Solo en el campo que
+   lo pide — bultos y pesos conservan su comportamiento nativo. */
+.sin-paso {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.sin-paso::-webkit-outer-spin-button,
+.sin-paso::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
 .form-grid input,
 .form-grid select {
   max-width: none;

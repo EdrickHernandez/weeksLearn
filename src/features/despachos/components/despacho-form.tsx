@@ -393,11 +393,14 @@ export function DespachoForm({
         </label>
 
         <label>
-          Valor (CLP)
+          <span className="titulo-fila">
+            Valor (CLP)
+            {valorPreview ? <span className="muted">{valorPreview}</span> : null}
+          </span>
           <input
             type="number"
             min="1"
-            step="1"
+            className="sin-paso"
             value={state.valorClp}
             onChange={(e) => set('valorClp')(e.target.value)}
             onBlur={() => validarCampo('valorClp')}
@@ -405,7 +408,6 @@ export function DespachoForm({
             required
             disabled={pending}
           />
-          {valorPreview ? <span className="muted">{valorPreview}</span> : null}
           {errores.valorClp ? <span className="field-error">{errores.valorClp}</span> : null}
         </label>
 
