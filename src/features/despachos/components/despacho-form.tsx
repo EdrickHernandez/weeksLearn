@@ -467,7 +467,7 @@ export function DespachoForm({
             value={state.telefono}
             onChange={(e) => set('telefono')(e.target.value)}
             onBlur={() => validarCampo('telefono')}
-            placeholder="+56912345678"
+            placeholder="912345678"
             disabled={pending}
           />
           {errores.telefono ? <span className="field-error">{errores.telefono}</span> : null}
