@@ -343,25 +343,6 @@ export function DespachoForm({
         </label>
 
         <label>
-          Transporte
-          <input
-            list="sugerencias-transporte"
-            value={state.transporte}
-            onChange={(e) => set('transporte')(e.target.value)}
-            onBlur={() => validarCampo('transporte')}
-            placeholder="Starken, Chilexpress…"
-            required
-            disabled={pending}
-          />
-          <datalist id="sugerencias-transporte">
-            {sugerenciasTransporte.map((nombre) => (
-              <option key={nombre} value={nombre} />
-            ))}
-          </datalist>
-          {errores.transporte ? <span className="field-error">{errores.transporte}</span> : null}
-        </label>
-
-        <label>
           Comuna
           <input
             list="sugerencias-comuna"
@@ -381,6 +362,37 @@ export function DespachoForm({
         </label>
 
         <label>
+          Dirección
+          <input
+            value={state.direccion}
+            onChange={(e) => set('direccion')(e.target.value)}
+            onBlur={() => validarCampo('direccion')}
+            placeholder="Av. Providencia 123"
+            disabled={pending}
+          />
+          {errores.direccion ? <span className="field-error">{errores.direccion}</span> : null}
+        </label>
+
+        <label>
+          Transporte
+          <input
+            list="sugerencias-transporte"
+            value={state.transporte}
+            onChange={(e) => set('transporte')(e.target.value)}
+            onBlur={() => validarCampo('transporte')}
+            placeholder="Starken, Chilexpress…"
+            required
+            disabled={pending}
+          />
+          <datalist id="sugerencias-transporte">
+            {sugerenciasTransporte.map((nombre) => (
+              <option key={nombre} value={nombre} />
+            ))}
+          </datalist>
+          {errores.transporte ? <span className="field-error">{errores.transporte}</span> : null}
+        </label>
+
+        <label>
           Valor (CLP)
           <input
             type="number"
@@ -397,68 +409,10 @@ export function DespachoForm({
           {errores.valorClp ? <span className="field-error">{errores.valorClp}</span> : null}
         </label>
 
-        <label>
-          Bultos
-          <input
-            type="number"
-            min="1"
-            step="1"
-            value={state.bultos}
-            onChange={(e) => setBultos(e.target.value)}
-            onBlur={() => validarCampo('bultos')}
-            required
-            disabled={pending}
-          />
-          {errores.bultos ? <span className="field-error">{errores.bultos}</span> : null}
-        </label>
-
-        <label>
-          Embalaje
-          <select
-            value={state.tipoEmbalaje}
-            onChange={(e) => set('tipoEmbalaje')(e.target.value)}
-            onBlur={() => validarCampo('tipoEmbalaje')}
-            disabled={pending}
-          >
-            {TIPOS_EMBALAJE.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {state.pesosKg.map((peso, indice) => (
-          <label key={indice}>
-            Peso bulto {indice + 1} (kg)
-            <input
-              type="number"
-              min={state.tipoEmbalaje === 'pallet' ? '0' : '0.01'}
-              step="0.01"
-              value={peso}
-              onChange={(e) => setPesoBulto(indice)(e.target.value)}
-              onBlur={() => validarCampo('pesosKg')}
-              placeholder={state.tipoEmbalaje === 'pallet' ? '0.00 (pallet)' : '12.5'}
-              required
-              disabled={pending}
-            />
-            {errores[`pesosKg.${indice}`] ? (
-              <span className="field-error">{errores[`pesosKg.${indice}`]}</span>
-            ) : null}
-          </label>
-        ))}
-
-        <label>
-          Dirección
-          <input
-            value={state.direccion}
-            onChange={(e) => set('direccion')(e.target.value)}
-            onBlur={() => validarCampo('direccion')}
-            placeholder="Av. Providencia 123"
-            disabled={pending}
-          />
-          {errores.direccion ? <span className="field-error">{errores.direccion}</span> : null}
-        </label>
+        {/* Separador de secciones: obligatorios + destino arriba, contacto
+            y carga física abajo — los pesos por bulto nacen identificados
+            seguidos al final, sea 1 bulto o 10. */}
+        <hr className="form-separador" />
 
         <label>
           Teléfono
@@ -520,6 +474,57 @@ export function DespachoForm({
           </select>
           {errores.vehiculo ? <span className="field-error">{errores.vehiculo}</span> : null}
         </label>
+
+        <label>
+          Bultos
+          <input
+            type="number"
+            min="1"
+            step="1"
+            value={state.bultos}
+            onChange={(e) => setBultos(e.target.value)}
+            onBlur={() => validarCampo('bultos')}
+            required
+            disabled={pending}
+          />
+          {errores.bultos ? <span className="field-error">{errores.bultos}</span> : null}
+        </label>
+
+        <label>
+          Embalaje
+          <select
+            value={state.tipoEmbalaje}
+            onChange={(e) => set('tipoEmbalaje')(e.target.value)}
+            onBlur={() => validarCampo('tipoEmbalaje')}
+            disabled={pending}
+          >
+            {TIPOS_EMBALAJE.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {state.pesosKg.map((peso, indice) => (
+          <label key={indice}>
+            Peso bulto {indice + 1} (kg)
+            <input
+              type="number"
+              min={state.tipoEmbalaje === 'pallet' ? '0' : '0.01'}
+              step="0.01"
+              value={peso}
+              onChange={(e) => setPesoBulto(indice)(e.target.value)}
+              onBlur={() => validarCampo('pesosKg')}
+              placeholder={state.tipoEmbalaje === 'pallet' ? '0.00 (pallet)' : '12.5'}
+              required
+              disabled={pending}
+            />
+            {errores[`pesosKg.${indice}`] ? (
+              <span className="field-error">{errores[`pesosKg.${indice}`]}</span>
+            ) : null}
+          </label>
+        ))}
       </div>
 
       {errorDeServidor ? (
