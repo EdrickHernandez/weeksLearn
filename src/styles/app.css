@@ -82,7 +82,10 @@ button:disabled {
 /* Solo los inputs de una línea — estilizados por TIPO, no por elemento:
    si mañana nace un checkbox, no hereda el look de barra gigante. La
    altura fija normaliza input y select (que el navegador mide distinto). */
+/* :not([type]) cubre los inputs SIN type declarado: el estándar HTML los
+   define como texto — el look base no les queda debiendo altura jamás. */
 input:where(
+  :not([type]),
   [type='text'],
   [type='email'],
   [type='tel'],

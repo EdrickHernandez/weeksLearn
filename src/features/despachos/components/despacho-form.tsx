@@ -312,6 +312,7 @@ export function DespachoForm({
           N° documento
           <input
             ref={refNumeroDocumento}
+            type="text"
             value={state.numeroDocumento}
             onChange={(e) => set('numeroDocumento')(e.target.value)}
             onBlur={() => validarCampo('numeroDocumento')}
@@ -327,6 +328,7 @@ export function DespachoForm({
         <label>
           N° guía
           <input
+            type="text"
             value={state.numeroGuia}
             onChange={(e) => set('numeroGuia')(e.target.value)}
             onBlur={() => validarCampo('numeroGuia')}
@@ -341,6 +343,7 @@ export function DespachoForm({
           Comuna
           <input
             list="sugerencias-comuna"
+            type="text"
             value={state.comuna}
             onChange={(e) => set('comuna')(e.target.value)}
             onBlur={() => validarCampo('comuna')}
@@ -359,6 +362,7 @@ export function DespachoForm({
         <label>
           Dirección
           <input
+            type="text"
             value={state.direccion}
             onChange={(e) => set('direccion')(e.target.value)}
             onBlur={() => validarCampo('direccion')}
@@ -372,6 +376,7 @@ export function DespachoForm({
           Transporte
           <input
             list="sugerencias-transporte"
+            type="text"
             value={state.transporte}
             onChange={(e) => set('transporte')(e.target.value)}
             onBlur={() => validarCampo('transporte')}
@@ -437,6 +442,7 @@ export function DespachoForm({
         <label>
           Contacto
           <input
+            type="text"
             value={state.contacto}
             onChange={(e) => set('contacto')(e.target.value)}
             onBlur={() => validarCampo('contacto')}
@@ -450,6 +456,7 @@ export function DespachoForm({
           Retirado por
           <input
             list="sugerencias-retiro"
+            type="text"
             value={state.retiradoPor}
             onChange={(e) => set('retiradoPor')(e.target.value)}
             onBlur={() => validarCampo('retiradoPor')}
