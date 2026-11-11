@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { despachoInputSchema, type Despacho, type DespachoInput } from '../schemas'
-import { COMUNAS, formatClp, RETIROS_BASE } from '../service'
+import { COMUNAS, formatoMiles, formatoTelefono, RETIROS_BASE, soloDigitos } from '../service'
 
 const TIPOS_DOCUMENTO = [
   { value: 'factura', label: 'Factura' },
@@ -67,7 +67,7 @@ function stateInicial(despacho?: Despacho | null): FormState {
       pesosKg: despacho.pesosBultos.length > 0 ? despacho.pesosBultos.map(String) : [''],
       tipoEmbalaje: despacho.tipoEmbalaje,
       direccion: despacho.direccion ?? '',
-      telefono: despacho.telefono ?? '',
+      telefono: formatoTelefono(despacho.telefono) ?? '',
       contacto: despacho.contacto ?? '',
       retiradoPor: despacho.retiradoPor ?? '',
       vehiculo: despacho.vehiculo ?? '',
@@ -269,11 +269,6 @@ export function DespachoForm({
     onGuardar(parsed.data)
   }
 
-  const valorPreview =
-    Number.isFinite(Number(state.valorClp)) && state.valorClp !== ''
-      ? formatClp(Number(state.valorClp))
-      : null
-
   return (
     <form className="card" onSubmit={handleSubmit} noValidate>
       <h2>{despacho ? 'Editar despacho' : 'Nuevo despacho'}</h2>
@@ -320,7 +315,7 @@ export function DespachoForm({
             value={state.numeroDocumento}
             onChange={(e) => set('numeroDocumento')(e.target.value)}
             onBlur={() => validarCampo('numeroDocumento')}
-            placeholder="F-001"
+            placeholder="1.639.758"
             required
             disabled={pending}
           />
@@ -335,30 +330,11 @@ export function DespachoForm({
             value={state.numeroGuia}
             onChange={(e) => set('numeroGuia')(e.target.value)}
             onBlur={() => validarCampo('numeroGuia')}
-            placeholder="G-100"
+            placeholder="1.386.677"
             required
             disabled={pending}
           />
           {errores.numeroGuia ? <span className="field-error">{errores.numeroGuia}</span> : null}
-        </label>
-
-        <label>
-          Transporte
-          <input
-            list="sugerencias-transporte"
-            value={state.transporte}
-            onChange={(e) => set('transporte')(e.target.value)}
-            onBlur={() => validarCampo('transporte')}
-            placeholder="Starken, Chilexpress…"
-            required
-            disabled={pending}
-          />
-          <datalist id="sugerencias-transporte">
-            {sugerenciasTransporte.map((nombre) => (
-              <option key={nombre} value={nombre} />
-            ))}
-          </datalist>
-          {errores.transporte ? <span className="field-error">{errores.transporte}</span> : null}
         </label>
 
         <label>
@@ -381,20 +357,129 @@ export function DespachoForm({
         </label>
 
         <label>
-          Valor (CLP)
+          Dirección
           <input
-            type="number"
-            min="1"
-            step="1"
-            value={state.valorClp}
-            onChange={(e) => set('valorClp')(e.target.value)}
-            onBlur={() => validarCampo('valorClp')}
-            placeholder="25000"
+            value={state.direccion}
+            onChange={(e) => set('direccion')(e.target.value)}
+            onBlur={() => validarCampo('direccion')}
+            placeholder="Av. Providencia 123"
+            disabled={pending}
+          />
+          {errores.direccion ? <span className="field-error">{errores.direccion}</span> : null}
+        </label>
+
+        <label>
+          Transporte
+          <input
+            list="sugerencias-transporte"
+            value={state.transporte}
+            onChange={(e) => set('transporte')(e.target.value)}
+            onBlur={() => validarCampo('transporte')}
+            placeholder="Starken, Chilexpress…"
             required
             disabled={pending}
           />
-          {valorPreview ? <span className="muted">{valorPreview}</span> : null}
+          <datalist id="sugerencias-transporte">
+            {sugerenciasTransporte.map((nombre) => (
+              <option key={nombre} value={nombre} />
+            ))}
+          </datalist>
+          {errores.transporte ? <span className="field-error">{errores.transporte}</span> : null}
+        </label>
+
+        <label>
+          Valor (CLP)
+          <input
+            type="text"
+            inputMode="numeric"
+            value={formatoMiles(state.valorClp)}
+            onChange={(e) => set('valorClp')(soloDigitos(e.target.value))}
+            onBlur={() => validarCampo('valorClp')}
+            placeholder="25.000"
+            required
+            disabled={pending}
+          />
           {errores.valorClp ? <span className="field-error">{errores.valorClp}</span> : null}
+        </label>
+
+        {/* Separador de secciones: obligatorios + destino arriba, contacto
+            y carga física abajo — los pesos por bulto nacen identificados
+            seguidos al final, sea 1 bulto o 10. */}
+        <hr className="form-separador" />
+
+        <label>
+          Teléfono
+          <input
+            type="tel"
+            value={state.telefono}
+            onChange={(e) => set('telefono')(e.target.value)}
+            onBlur={() => {
+              // La revisión PRIMERO (sobre lo tecleado, como hoy) y luego el
+              // re-pintado en formato nacional. Directo con setState, sin el
+              // set() oficial: su perdón en vivo borraria el error recién
+              // creado — aquí no hay corrección en curso, es un cierre.
+              validarCampo('telefono')
+              const formateado = formatoTelefono(state.telefono)
+              if (formateado && formateado !== state.telefono) {
+                setState((previo) => ({ ...previo, telefono: formateado }))
+              }
+            }}
+            placeholder="912345678"
+            disabled={pending}
+          />
+          {errores.telefono ? (
+            <span className="field-error">{errores.telefono}</span>
+          ) : (
+            <span className="muted">Ingresa los 9 dígitos (móvil o fijo)</span>
+          )}
+        </label>
+
+        <label>
+          Contacto
+          <input
+            value={state.contacto}
+            onChange={(e) => set('contacto')(e.target.value)}
+            onBlur={() => validarCampo('contacto')}
+            placeholder="Juan Pérez"
+            disabled={pending}
+          />
+          {errores.contacto ? <span className="field-error">{errores.contacto}</span> : null}
+        </label>
+
+        <label>
+          Retirado por
+          <input
+            list="sugerencias-retiro"
+            value={state.retiradoPor}
+            onChange={(e) => set('retiradoPor')(e.target.value)}
+            onBlur={() => validarCampo('retiradoPor')}
+            placeholder="Nombre de quien retira"
+            disabled={pending}
+          />
+          <datalist id="sugerencias-retiro">
+            {RETIROS_BASE.map((nombre) => (
+              <option key={nombre} value={nombre} />
+            ))}
+          </datalist>
+          {errores.retiradoPor ? <span className="field-error">{errores.retiradoPor}</span> : null}
+        </label>
+
+        <label>
+          Vehículo
+          <select
+            value={state.vehiculo}
+            onChange={(e) => set('vehiculo')(e.target.value)}
+            onBlur={() => validarCampo('vehiculo')}
+            disabled={pending}
+          >
+            <option value="">—</option>
+            {VEHICULOS.map((v) => (
+              <option key={v.value} value={v.value}>
+                {v.label}
+              </option>
+            ))}
+          </select>
+          {errores.vehiculo ? <span className="field-error">{errores.vehiculo}</span> : null}
         </label>
 
         <label>
@@ -447,79 +532,6 @@ export function DespachoForm({
             ) : null}
           </label>
         ))}
-
-        <label>
-          Dirección
-          <input
-            value={state.direccion}
-            onChange={(e) => set('direccion')(e.target.value)}
-            onBlur={() => validarCampo('direccion')}
-            placeholder="Av. Providencia 123"
-            disabled={pending}
-          />
-          {errores.direccion ? <span className="field-error">{errores.direccion}</span> : null}
-        </label>
-
-        <label>
-          Teléfono
-          <input
-            type="tel"
-            value={state.telefono}
-            onChange={(e) => set('telefono')(e.target.value)}
-            onBlur={() => validarCampo('telefono')}
-            placeholder="+56912345678"
-            disabled={pending}
-          />
-          {errores.telefono ? <span className="field-error">{errores.telefono}</span> : null}
-        </label>
-
-        <label>
-          Contacto
-          <input
-            value={state.contacto}
-            onChange={(e) => set('contacto')(e.target.value)}
-            onBlur={() => validarCampo('contacto')}
-            placeholder="Juan Pérez"
-            disabled={pending}
-          />
-          {errores.contacto ? <span className="field-error">{errores.contacto}</span> : null}
-        </label>
-
-        <label>
-          Retirado por
-          <input
-            list="sugerencias-retiro"
-            value={state.retiradoPor}
-            onChange={(e) => set('retiradoPor')(e.target.value)}
-            onBlur={() => validarCampo('retiradoPor')}
-            placeholder="Nombre de quien retira"
-            disabled={pending}
-          />
-          <datalist id="sugerencias-retiro">
-            {RETIROS_BASE.map((nombre) => (
-              <option key={nombre} value={nombre} />
-            ))}
-          </datalist>
-          {errores.retiradoPor ? <span className="field-error">{errores.retiradoPor}</span> : null}
-        </label>
-
-        <label>
-          Vehículo
-          <select
-            value={state.vehiculo}
-            onChange={(e) => set('vehiculo')(e.target.value)}
-            onBlur={() => validarCampo('vehiculo')}
-            disabled={pending}
-          >
-            <option value="">—</option>
-            {VEHICULOS.map((v) => (
-              <option key={v.value} value={v.value}>
-                {v.label}
-              </option>
-            ))}
-          </select>
-          {errores.vehiculo ? <span className="field-error">{errores.vehiculo}</span> : null}
-        </label>
       </div>
 
       {errorDeServidor ? (

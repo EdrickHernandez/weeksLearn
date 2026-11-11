@@ -155,6 +155,25 @@ export function formatClp(valor: number): string {
 }
 
 /**
+ * Lo que un input de Valor termina GUARDANDO: solo dígitos de cualquier
+ * talacha de teclado o paste ("25.000" → "25000", "abc" → ""). El techo
+ * de largo evita pegamentos de paste gigantes que la validación rechazaría.
+ */
+export function soloDigitos(raw: string, maxLen = 10): string {
+  return raw.replace(/\D/g, '').slice(0, maxLen)
+}
+
+/**
+ * Formato de VISTA PARA EL INPUT: dígitos crudos → separados de miles
+ * a la chilena ("25000" → "25.000"). Sin símbolo $: el label ya dice CLP.
+ * El estado guarda crudo; el DOM muestra bonito (input → estado → vista).
+ */
+export function formatoMiles(digitos: string): string {
+  if (!digitos) return ''
+  return new Intl.NumberFormat('es-CL', { maximumFractionDigits: 0 }).format(Number(digitos))
+}
+
+/**
  * Extrae sugerencias de transporte para el datalist: únicos del historial
  * (dedupe insensible a mayúsculas/espacios, forma normalizada) + base,
  * orden alfabético español.

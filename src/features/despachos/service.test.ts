@@ -7,6 +7,7 @@ import {
   extractTransporteSuggestions,
   finDiaLocalIso,
   formatoFechaJornada,
+  formatoMiles,
   formatoTelefono,
   formatClp,
   hayFiltrosActivos,
@@ -15,6 +16,7 @@ import {
   normalizeTelefono,
   normalizeTransporte,
   patronIlike,
+  soloDigitos,
   sumBultos,
   sumValorClp,
   termQPostgrest,
@@ -522,6 +524,27 @@ describe('formatoTelefono (formato de LECTURA, humano)', () => {
 
   it('dato no parseable se muestra CRUDO (tolerante con el legacy)', () => {
     expect(formatoTelefono('dato-raro')).toBe('dato-raro')
+  })
+})
+
+describe('soloDigitos + formatoMiles (el input de Valor)', () => {
+  it('soloDigitos: de cualquier talacha quedan los dígitos, con techo de largo', () => {
+    expect(soloDigitos('25.000')).toBe('25000')
+    expect(soloDigitos('$ 1-234')).toBe('1234')
+    expect(soloDigitos('abc')).toBe('')
+    expect(soloDigitos('9'.repeat(12))).toBe('9'.repeat(10)) // techo: 10 dígitos
+  })
+
+  it('formatoMiles: separadores de miles a la chilena (puntos)', () => {
+    expect(formatoMiles('')).toBe('')
+    expect(formatoMiles('25000')).toBe('25.000')
+    expect(formatoMiles('4120000')).toBe('4.120.000')
+    expect(formatoMiles('1000')).toBe('1.000')
+  })
+
+  it('el par round-tripea: lo tecleado vuelve idéntico tras el unformateo', () => {
+    // el invariante que protege el bl de Number(state.valorClp) en el submit
+    expect(soloDigitos(formatoMiles(soloDigitos('4.120.000')))).toBe('4120000')
   })
 })
 
