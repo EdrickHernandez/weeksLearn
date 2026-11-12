@@ -82,15 +82,16 @@ button:disabled {
 /* Solo los inputs de una línea — estilizados por TIPO, no por elemento:
    si mañana nace un checkbox, no hereda el look de barra gigante. La
    altura fija normaliza input y select (que el navegador mide distinto). */
-input:where(
-  [type='text'],
-  [type='email'],
-  [type='tel'],
-  [type='number'],
-  [type='search'],
-  [type='datetime-local'],
-  [type='password']
-),
+/* LISTA NEGRA, no whitelist: todo input de una línea recibe el look base
+   SALVO los exóticos (checkbox, radio, file, range, color, hidden y los
+   botones). La whitelist nos mordió dos veces: los inputs sin type y los
+   type='date' nacían fuera del club sin altura ni padding. Con la lista
+   negra ningún tipo futuro vuelve a caerse del avión. */
+input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='range']):not(
+    [type='color']
+  ):not([type='hidden']):not([type='submit']):not([type='button']):not([type='image']):not(
+    [type='reset']
+  ),
 select {
   font: inherit;
   padding: 0 var(--esp-3);
