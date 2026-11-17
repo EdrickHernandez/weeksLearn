@@ -4,11 +4,13 @@ import { getSupabaseServerClient } from '~/server/db/supabase-server'
 import * as repo from '~/server/services/despachos'
 import {
   createDespachoInputSchema,
+  createEntregaInputSchema,
   despachoIdSchema,
   listadoDespachosInputSchema,
   updateDespachoInputSchema,
   type Despacho,
   type DespachoResult,
+  type EntregaResult,
   type PaginaDespachos,
   type ServiceError,
 } from './schemas'
@@ -16,6 +18,7 @@ import {
   buildDespachoBultosValues,
   buildDespachoInsert,
   buildDespachoUpdate,
+  buildEntregaInsert,
   toDespacho,
 } from './service'
 
@@ -30,6 +33,17 @@ function unauthorized(): { ok: false; error: ServiceError } {
   return {
     ok: false,
     error: { code: 'unauthorized', message: 'Sesión no válida o expirada.', status: 401 },
+  }
+}
+
+function forbidden(): { ok: false; error: ServiceError } {
+  return {
+    ok: false,
+    error: {
+      code: 'forbidden',
+      message: 'No tienes permisos para registrar entregas.',
+      status: 403,
+    },
   }
 }
 
@@ -107,6 +121,26 @@ export const createDespachoFn = createServerFn({ method: 'POST' })
     } catch (error) {
       console.error('[despachos] create falló:', error)
       return dbError('No se pudo crear el despacho. Intenta de nuevo.')
+    }
+  })
+
+export const createEntregaFn = createServerFn({ method: 'POST' })
+  .validator(createEntregaInputSchema)
+  .handler(async ({ data }): Promise<EntregaResult<{ despachoId: string }>> => {
+    const user = await getUser()
+    if (!user) return unauthorized()
+    if (user.app_metadata?.rol !== 'admin') return forbidden()
+
+    try {
+      const db = getSupabaseServerClient()
+      const propio = await repo.despachoPropio(db, user.id, data.despachoId)
+      if (!propio) return notFound()
+
+      const row = await repo.insertEntrega(db, buildEntregaInsert(data.despachoId, data.entrega))
+      return { ok: true, data: { despachoId: row.despacho_id } }
+    } catch (error) {
+      console.error('[entregas] create falló:', error)
+      return dbError('No se pudo registrar la entrega. Intenta de nuevo.')
     }
   })
 
