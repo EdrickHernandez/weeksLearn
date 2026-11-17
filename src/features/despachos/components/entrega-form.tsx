@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { entregaInputSchema, type EntregaInput } from '../schemas'
-import arrowLeftCircle from '../../../../icons/arrow-left-circle.svg'
+import arrowLeft from '../../../../icons/arrow-left (1).svg'
 
 type TipoEntrega = 'cliente_final' | 'transporte_tercerizado'
 
@@ -66,7 +66,7 @@ export function EntregaForm({ onCancelar, onGuardar, pending, errorDeServidor }:
         title="Volver a la ficha"
         onClick={onCancelar}
       >
-        <img src={arrowLeftCircle} alt="" aria-hidden="true" />
+        <img src={arrowLeft} alt="" aria-hidden="true" />
       </button>
 
       <div className="entrega-form-titulo">

@@ -31,7 +31,7 @@ import {
   sumValorClp,
 } from '~/features/despachos/service'
 import { Route } from './index'
-import arrowLeftCircle from '../../icons/arrow-left-circle.svg'
+import arrowLeft from '../../icons/arrow-left (1).svg'
 
 type ModoForm = { modo: 'cerrado' } | { modo: 'crear' }
 
@@ -419,7 +419,7 @@ export function DashboardPage() {
               title="Volver a la ficha"
               onClick={() => setFicha({ ...ficha, modo: 'ver' })}
             >
-              <img src={arrowLeftCircle} alt="" aria-hidden="true" />
+              <img src={arrowLeft} alt="" aria-hidden="true" />
             </button>
             <DespachoForm
               despacho={ficha.despacho}
