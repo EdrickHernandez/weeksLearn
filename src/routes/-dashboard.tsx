@@ -410,8 +410,8 @@ export function DashboardPage() {
           <>
             {/* Navegación del dialog: Atrás vuelve a la ficha de lectura.
                 Botón solo-ícono → necesita nombre accesible (aria-label).
-                Además el cierre del form está apagado (mostrarCancelar=false)
-                para no duplicar salidas. */}
+                Además Cancelar abandona el diálogo completo; la flecha solo
+                vuelve a la ficha de lectura. */}
             <button
               type="button"
               className="btn-ghost ficha-atras"
@@ -429,8 +429,8 @@ export function DashboardPage() {
               onGuardar={(input) =>
                 actualizar.mutate({ ...input, id: ficha.despacho.id }, { onSuccess: cerrarFicha })
               }
-              onCancelar={() => setFicha({ ...ficha, modo: 'ver' })}
-              mostrarCancelar={false}
+              onCancelar={cerrarFicha}
+              mostrarCancelar
             />
           </>
         ) : null}
