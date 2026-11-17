@@ -13,6 +13,7 @@ export type DespachoFichaProps = {
   despacho: Despacho
   onEditar: () => void
   onEliminar: () => void
+  onRegistrarEntrega: () => void
 }
 
 /** Par etiqueta/valor de la ficha: etiqueta tenue, dato en tinta. */
@@ -40,7 +41,12 @@ function Dato({
  * DespachoForm que se monta en el MISMO dialog (una sola superficie de
  * edición, dos anfitriones).
  */
-export function DespachoFicha({ despacho, onEditar, onEliminar }: DespachoFichaProps) {
+export function DespachoFicha({
+  despacho,
+  onEditar,
+  onEliminar,
+  onRegistrarEntrega,
+}: DespachoFichaProps) {
   // Confirmación inline de borrado: estado local de componente.
   const [confirmando, setConfirmando] = React.useState(false)
   const pesoTotal = sumBultos(despacho.pesosBultos)
@@ -48,10 +54,17 @@ export function DespachoFicha({ despacho, onEditar, onEliminar }: DespachoFichaP
 
   return (
     <>
-      <h2 className="ficha-titulo fila-doc">
-        {despacho.tipoDocumento === 'factura' ? 'Fact.' : 'Bol.'} {despacho.numeroDocumento}
-      </h2>
-      <p className="ficha-fecha">{FORMATO_FECHA.format(new Date(despacho.despachadoAt))}</p>
+      <div className="ficha-cabecera">
+        <div>
+          <h2 className="ficha-titulo fila-doc">
+            {despacho.tipoDocumento === 'factura' ? 'Fact.' : 'Bol.'} {despacho.numeroDocumento}
+          </h2>
+          <p className="ficha-fecha">{FORMATO_FECHA.format(new Date(despacho.despachadoAt))}</p>
+        </div>
+        <button type="button" className="ficha-accion-principal" onClick={onRegistrarEntrega}>
+          Registrar entrega
+        </button>
+      </div>
 
       <div className="ficha-datos">
         <Dato etiqueta="Guía">{despacho.numeroGuia}</Dato>

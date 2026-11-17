@@ -3,14 +3,21 @@ import { Link, useRouter } from '@tanstack/react-router'
 import { signOutFn } from '~/features/auth/functions'
 import { useSessionQuery } from '~/features/auth/queries/use-session'
 import { DespachoApiError } from '~/features/despachos/unwrap'
-import type { Despacho, DespachoFiltrosUrl, DespachoInput } from '~/features/despachos/schemas'
+import type {
+  Despacho,
+  DespachoFiltrosUrl,
+  DespachoInput,
+  EntregaInput,
+} from '~/features/despachos/schemas'
 import { DESPACHOS_POR_PAGINA_DEFAULT } from '~/features/despachos/schemas'
 import { useCreateDespachoMutation } from '~/features/despachos/mutations/use-create-despacho'
 import { useDeleteDespachoMutation } from '~/features/despachos/mutations/use-delete-despacho'
 import { useUpdateDespachoMutation } from '~/features/despachos/mutations/use-update-despacho'
+import { useCreateEntregaMutation } from '~/features/despachos/mutations/use-create-entrega'
 import { BuscadorFiltros } from '~/features/despachos/components/buscador-filtros'
 import { DespachoForm } from '~/features/despachos/components/despacho-form'
 import { DespachoFicha } from '~/features/despachos/components/despacho-ficha'
+import { EntregaForm } from '~/features/despachos/components/entrega-form'
 import { DespachoFila } from '~/features/despachos/components/despacho-fila'
 import { DespachosLista } from '~/features/despachos/components/despachos-lista'
 import { useDespachosQuery } from '~/features/despachos/queries/use-despachos'
@@ -27,7 +34,7 @@ import { Route } from './index'
 
 type ModoForm = { modo: 'cerrado' } | { modo: 'crear' }
 
-type Ficha = { despacho: Despacho; editando: boolean }
+type Ficha = { despacho: Despacho; modo: 'ver' | 'editar' | 'entrega' }
 
 /** Página vacía compartida: referencialmente estable para los memo. */
 const EMPTY: Despacho[] = []
@@ -85,6 +92,7 @@ export function DashboardPage() {
 
   const crear = useCreateDespachoMutation()
   const actualizar = useUpdateDespachoMutation()
+  const crearEntrega = useCreateEntregaMutation()
   const eliminar = useDeleteDespachoMutation()
 
   const [form, setForm] = React.useState<ModoForm>({ modo: 'cerrado' })
@@ -98,7 +106,7 @@ export function DashboardPage() {
   const [ficha, setFicha] = React.useState<Ficha | null>(null)
 
   function abrirFicha(despacho: Despacho) {
-    setFicha({ despacho, editando: false })
+    setFicha({ despacho, modo: 'ver' })
     refDialog.current?.showModal()
   }
 
@@ -146,6 +154,14 @@ export function DashboardPage() {
 
   function handleGuardar(input: DespachoInput) {
     crear.mutate(input, { onSuccess: () => setForm({ modo: 'cerrado' }) })
+  }
+
+  function handleGuardarEntrega(input: EntregaInput) {
+    if (!ficha) return
+    crearEntrega.mutate(
+      { despachoId: ficha.despacho.id, entrega: input },
+      { onSuccess: cerrarFicha },
+    )
   }
 
   /** Commitea cambios de filtro a la URL (los valida validateSearch).
@@ -296,6 +312,7 @@ export function DashboardPage() {
                     <span>Bultos</span>
                     <span>Peso</span>
                     <span>Retiro</span>
+                    <span>Estado</span>
                   </div>
                   {delDia.map((despacho) => (
                     <DespachoFila key={despacho.id} despacho={despacho} onAbrirFicha={abrirFicha} />
@@ -363,7 +380,7 @@ export function DashboardPage() {
           abierto — sin estados que coordinar. */}
       <dialog
         ref={refDialog}
-        className={`ficha${ficha?.editando ? ' ficha-editando' : ''}`}
+        className={`ficha${ficha?.modo === 'editar' ? ' ficha-editando' : ''}`}
         onClick={(e) => {
           // Click en el backdrop: el evento aterriza en el propio <dialog>
           // (el ::backdrop no es un elemento), no en su contenido.
@@ -371,10 +388,11 @@ export function DashboardPage() {
         }}
         onClose={() => setFicha(null)}
       >
-        {ficha && !ficha.editando ? (
+        {ficha && ficha.modo === 'ver' ? (
           <DespachoFicha
             despacho={ficha.despacho}
-            onEditar={() => setFicha({ ...ficha, editando: true })}
+            onEditar={() => setFicha({ ...ficha, modo: 'editar' })}
+            onRegistrarEntrega={() => setFicha({ ...ficha, modo: 'entrega' })}
             onEliminar={() => {
               eliminar.mutate(ficha.despacho.id)
               cerrarFicha()
@@ -382,7 +400,7 @@ export function DashboardPage() {
           />
         ) : null}
 
-        {ficha && ficha.editando ? (
+        {ficha && ficha.modo === 'editar' ? (
           <>
             {/* Navegación del dialog: Atrás vuelve a la ficha de lectura.
                 SVG inline con currentColor (pinta del color del texto):
@@ -395,7 +413,7 @@ export function DashboardPage() {
               className="btn-ghost ficha-atras"
               aria-label="Volver a la ficha del despacho"
               title="Volver a la ficha"
-              onClick={() => setFicha({ ...ficha, editando: false })}
+              onClick={() => setFicha({ ...ficha, modo: 'ver' })}
             >
               <svg
                 width="18"
@@ -419,10 +437,19 @@ export function DashboardPage() {
               onGuardar={(input) =>
                 actualizar.mutate({ ...input, id: ficha.despacho.id }, { onSuccess: cerrarFicha })
               }
-              onCancelar={() => setFicha({ ...ficha, editando: false })}
+              onCancelar={() => setFicha({ ...ficha, modo: 'ver' })}
               mostrarCancelar={false}
             />
           </>
+        ) : null}
+
+        {ficha && ficha.modo === 'entrega' ? (
+          <EntregaForm
+            onCancelar={() => setFicha({ ...ficha, modo: 'ver' })}
+            onGuardar={handleGuardarEntrega}
+            pending={crearEntrega.isPending}
+            errorDeServidor={crearEntrega.error ? mensajeDeError(crearEntrega.error) : null}
+          />
         ) : null}
       </dialog>
     </main>
