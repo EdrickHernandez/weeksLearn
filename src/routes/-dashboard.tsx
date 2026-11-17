@@ -437,7 +437,7 @@ export function DashboardPage() {
 
         {ficha && ficha.modo === 'entrega' ? (
           <EntregaForm
-            onCancelar={() => setFicha({ ...ficha, modo: 'ver' })}
+            onCancelar={cerrarFicha}
             onGuardar={handleGuardarEntrega}
             pending={crearEntrega.isPending}
             errorDeServidor={crearEntrega.error ? mensajeDeError(crearEntrega.error) : null}
