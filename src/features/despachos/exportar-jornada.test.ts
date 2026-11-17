@@ -22,6 +22,8 @@ function despachoBase(sobreescritos: Partial<Despacho> = {}): Despacho {
     bultos: 2,
     tipoEmbalaje: 'caja',
     pesosBultos: [12.5, 8],
+    entrega: null,
+    entregado: false,
     direccion: 'Av. Ejemplo 123',
     telefono: null,
     contacto: 'Juan',

@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { parsePhoneNumberFromString } from 'libphonenumber-js/min'
+import { isRutValido, normalizeRut } from './rut'
 
 /**
  * Esquemas Zod de la feature despachos: ÚNICA fuente de verdad de tipos.
@@ -13,6 +14,73 @@ export const vehiculoSchema = z.enum(['moto', 'furgon', 'camion', 'camioneta', '
 export type TipoDocumento = z.infer<typeof tipoDocumentoSchema>
 export type TipoEmbalaje = z.infer<typeof tipoEmbalajeSchema>
 export type Vehiculo = z.infer<typeof vehiculoSchema>
+
+/** Tipos de recepción que puede registrar el admin. */
+export const tipoEntregaSchema = z.enum(['cliente_final', 'transporte_tercerizado'])
+export type TipoEntrega = z.infer<typeof tipoEntregaSchema>
+
+/** Valor crudo de un input `datetime-local`, sin zona horaria todavía. */
+const fechaHoraLocalSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, 'Ingresa una fecha y hora válidas')
+
+const textoEntrega = (mensaje: string, max = 120) =>
+  z.string().trim().min(1, mensaje).max(max, 'El texto es demasiado largo')
+
+const rutEntrega = z
+  .string()
+  .trim()
+  .min(3, 'El RUT es obligatorio')
+  .max(12, 'El RUT es demasiado largo')
+  .refine(isRutValido, 'El RUT no es válido')
+  .transform(normalizeRut)
+
+/**
+ * Contrato discriminado: cada tipo solo puede enviar sus propios campos.
+ * La normalización del RUT y la conversión horaria ocurren después,
+ * en el servicio, una vez que este contrato ya aceptó la forma básica.
+ */
+export const entregaInputSchema = z.discriminatedUnion('tipoEntrega', [
+  z.object({
+    tipoEntrega: z.literal('cliente_final'),
+    nombreCliente: textoEntrega('El nombre es obligatorio'),
+    apellidoCliente: textoEntrega('El apellido es obligatorio'),
+    rutCliente: rutEntrega,
+    entregaEstimadaAt: fechaHoraLocalSchema,
+  }),
+  z.object({
+    tipoEntrega: z.literal('transporte_tercerizado'),
+    nombreTransporte: textoEntrega('El transporte es obligatorio'),
+    ordenCompra: textoEntrega('La orden de compra es obligatoria'),
+    rutTransporte: rutEntrega,
+    recibidoAt: fechaHoraLocalSchema,
+    nombreRecibio: z.string().trim().max(120, 'El nombre es demasiado largo').optional(),
+  }),
+])
+
+export type EntregaInput = z.infer<typeof entregaInputSchema>
+
+export const createEntregaInputSchema = z.object({
+  despachoId: z.uuid('Id de despacho inválido'),
+  entrega: entregaInputSchema,
+})
+
+export type CreateEntregaInput = z.infer<typeof createEntregaInputSchema>
+
+/** Valores snake_case listos para insertar en `public.entregas`. */
+export type EntregaInsertValues = {
+  despacho_id: string
+  tipo_entrega: TipoEntrega
+  nombre_cliente: string | null
+  apellido_cliente: string | null
+  rut_cliente: string | null
+  entrega_estimada_at: string | null
+  nombre_transporte: string | null
+  orden_compra: string | null
+  rut_transporte: string | null
+  recibido_at: string | null
+  nombre_recibio: string | null
+}
 
 /**
  * Fecha del despacho: acepta "2026-09-30T14:30" (input datetime-local)
@@ -123,6 +191,27 @@ export const despachoRowSchema = z.object({
 
 export type DespachoRow = z.infer<typeof despachoRowSchema>
 
+const entregaRowSchema = z.object({
+  id: z.uuid(),
+  despacho_id: z.uuid(),
+  tipo_entrega: tipoEntregaSchema,
+  nombre_cliente: z.string().nullable(),
+  apellido_cliente: z.string().nullable(),
+  rut_cliente: z.string().nullable(),
+  entrega_estimada_at: z.string().nullable(),
+  nombre_transporte: z.string().nullable(),
+  orden_compra: z.string().nullable(),
+  rut_transporte: z.string().nullable(),
+  recibido_at: z.string().nullable(),
+  nombre_recibio: z.string().nullable(),
+})
+
+/** PostgREST puede representar la relación 1:1 como objeto o array singleton. */
+const entregaRelacionSchema = z.preprocess(
+  (valor) => (Array.isArray(valor) ? (valor[0] ?? null) : valor),
+  entregaRowSchema.nullable(),
+)
+
 /** Fila con los bultos embebidos (SELECT con join de PostgREST). */
 export const despachoConBultosRowSchema = despachoRowSchema.extend({
   bultos_detalle: z.array(
@@ -131,9 +220,31 @@ export const despachoConBultosRowSchema = despachoRowSchema.extend({
       peso_kg: z.union([z.string(), z.number()]),
     }),
   ),
+  entrega: entregaRelacionSchema.optional().default(null),
 })
 
 export type DespachoConBultosRow = z.infer<typeof despachoConBultosRowSchema>
+
+export type Entrega =
+  | {
+      id: string
+      despachoId: string
+      tipoEntrega: 'cliente_final'
+      nombreCliente: string
+      apellidoCliente: string
+      rutCliente: string
+      entregaEstimadaAt: string
+    }
+  | {
+      id: string
+      despachoId: string
+      tipoEntrega: 'transporte_tercerizado'
+      nombreTransporte: string
+      ordenCompra: string
+      rutTransporte: string
+      recibidoAt: string
+      nombreRecibio: string | null
+    }
 
 /**
  * Registro del dominio que consume la UI (camelCase, fechas ISO UTC).
@@ -158,6 +269,8 @@ export const despachoSchema = z.object({
   contacto: z.string().nullable(),
   retiradoPor: z.string().nullable(),
   vehiculo: vehiculoSchema.nullable(),
+  entrega: z.custom<Entrega>().nullable(),
+  entregado: z.boolean(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 })
@@ -190,14 +303,15 @@ export type DespachoBultoValues = { numero: number; peso_kg: number }
 
 /** Contrato de error tipado de las Server Functions (el hook lo convierte a throw con .status). */
 export const serviceErrorSchema = z.object({
-  code: z.enum(['unauthorized', 'not_found', 'db_error']),
+  code: z.enum(['unauthorized', 'forbidden', 'not_found', 'db_error']),
   message: z.string(),
-  status: z.union([z.literal(401), z.literal(404), z.literal(500)]),
+  status: z.union([z.literal(401), z.literal(403), z.literal(404), z.literal(500)]),
 })
 
 export type ServiceError = z.infer<typeof serviceErrorSchema>
 
 export type DespachoResult<T> = { ok: true; data: T } | { ok: false; error: ServiceError }
+export type EntregaResult<T> = { ok: true; data: T } | { ok: false; error: ServiceError }
 
 /**
  * Tamaño de página DEFAULT del listado server-side. El operador puede

@@ -1,5 +1,6 @@
 import comunas from './data/comunas.json'
 import { parsePhoneNumberFromString } from 'libphonenumber-js/min'
+import { fechaEntregaAISO } from './fecha-chile'
 import {
   despachoConBultosRowSchema,
   despachoRowSchema,
@@ -12,6 +13,9 @@ import {
   type DespachoRow,
   type DespachoUpdateValues,
   type DespachoValues,
+  type EntregaInput,
+  type EntregaInsertValues,
+  type Entrega,
 } from './schemas'
 
 /**
@@ -46,6 +50,95 @@ export const RETIROS_BASE: readonly string[] = [
   'Hugo Villa',
   'Orlando Luna',
 ]
+
+/**
+ * Convierte el input discriminado del formulario a las columnas de `entregas`.
+ * La rama elegida por `tipoEntrega` deja el otro grupo de columnas en null.
+ */
+export function buildEntregaInsert(
+  despachoId: string,
+  input: EntregaInput,
+  ahora = new Date(),
+): EntregaInsertValues {
+  if (input.tipoEntrega === 'cliente_final') {
+    return {
+      despacho_id: despachoId,
+      tipo_entrega: input.tipoEntrega,
+      nombre_cliente: input.nombreCliente,
+      apellido_cliente: input.apellidoCliente,
+      rut_cliente: input.rutCliente,
+      entrega_estimada_at: fechaEntregaAISO(input.entregaEstimadaAt, ahora),
+      nombre_transporte: null,
+      orden_compra: null,
+      rut_transporte: null,
+      recibido_at: null,
+      nombre_recibio: null,
+    }
+  }
+
+  return {
+    despacho_id: despachoId,
+    tipo_entrega: input.tipoEntrega,
+    nombre_cliente: null,
+    apellido_cliente: null,
+    rut_cliente: null,
+    entrega_estimada_at: null,
+    nombre_transporte: input.nombreTransporte,
+    orden_compra: input.ordenCompra,
+    rut_transporte: input.rutTransporte,
+    recibido_at: fechaEntregaAISO(input.recibidoAt, ahora),
+    nombre_recibio: input.nombreRecibio?.trim() || null,
+  }
+}
+
+export function toEntrega(row: {
+  id: string
+  despacho_id: string
+  tipo_entrega: 'cliente_final' | 'transporte_tercerizado'
+  nombre_cliente: string | null
+  apellido_cliente: string | null
+  rut_cliente: string | null
+  entrega_estimada_at: string | null
+  nombre_transporte: string | null
+  orden_compra: string | null
+  rut_transporte: string | null
+  recibido_at: string | null
+  nombre_recibio: string | null
+}): Entrega {
+  if (row.tipo_entrega === 'cliente_final') {
+    if (
+      !row.nombre_cliente ||
+      !row.apellido_cliente ||
+      !row.rut_cliente ||
+      !row.entrega_estimada_at
+    ) {
+      throw new Error('La entrega de cliente final está incompleta')
+    }
+    return {
+      id: row.id,
+      despachoId: row.despacho_id,
+      tipoEntrega: row.tipo_entrega,
+      nombreCliente: row.nombre_cliente,
+      apellidoCliente: row.apellido_cliente,
+      rutCliente: row.rut_cliente,
+      entregaEstimadaAt: row.entrega_estimada_at,
+    }
+  }
+
+  if (!row.nombre_transporte || !row.orden_compra || !row.rut_transporte || !row.recibido_at) {
+    throw new Error('La entrega de transporte está incompleta')
+  }
+  return {
+    id: row.id,
+    despachoId: row.despacho_id,
+    tipoEntrega: row.tipo_entrega,
+    nombreTransporte: row.nombre_transporte,
+    ordenCompra: row.orden_compra,
+    rutTransporte: row.rut_transporte,
+    recibidoAt: row.recibido_at,
+    nombreRecibio: row.nombre_recibio,
+  }
+}
 
 /** Clave de comparación: minúsculas, sin tildes, espacios colapsados ("Ñuñoa" → "nunoa"). */
 function matchKey(value: string): string {
@@ -274,6 +367,8 @@ export function toDespacho(row: DespachoConBultosRow): Despacho {
     contacto: row.contacto,
     retiradoPor: row.retirado_por,
     vehiculo: row.vehiculo,
+    entrega: row.entrega ? toEntrega(row.entrega) : null,
+    entregado: row.entrega !== null,
     createdAt: new Date(row.created_at).toISOString(),
     updatedAt: new Date(row.updated_at).toISOString(),
   }
