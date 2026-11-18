@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { despachoInputSchema, type Despacho, type DespachoInput } from '../schemas'
 import { COMUNAS, formatoMiles, formatoTelefono, RETIROS_BASE, soloDigitos } from '../service'
+import arrowLeft from '../../../../icons/arrow-left (1).svg'
 
 const TIPOS_DOCUMENTO = [
   { value: 'factura', label: 'Factura' },
@@ -128,6 +129,8 @@ export type DespachoFormProps = {
   /** El anfitrión que ofrece su propio control de vuelta (p. ej. la ficha
       con su botón Atrás) puede apagar este Cancelar para no duplicar. */
   mostrarCancelar?: boolean
+  /** En creación, muestra una salida superior además del botón Cancelar. */
+  mostrarAtras?: boolean
 }
 
 /**
@@ -146,6 +149,7 @@ export function DespachoForm({
   onGuardar,
   onCancelar,
   mostrarCancelar = true,
+  mostrarAtras = false,
 }: DespachoFormProps) {
   const [state, setState] = React.useState<FormState>(() => stateInicial(despacho))
   const [errores, setErrores] = React.useState<Record<string, string>>({})
@@ -271,6 +275,18 @@ export function DespachoForm({
 
   return (
     <form className="card" onSubmit={handleSubmit} noValidate>
+      {mostrarAtras ? (
+        <button
+          type="button"
+          className="btn-ghost ficha-atras"
+          aria-label="Volver al dashboard"
+          title="Volver al dashboard"
+          onClick={onCancelar}
+          disabled={pending}
+        >
+          <img src={arrowLeft} alt="" aria-hidden="true" />
+        </button>
+      ) : null}
       <h2>{despacho ? 'Editar despacho' : 'Nuevo despacho'}</h2>
 
       <div className="form-grid">

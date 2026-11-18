@@ -1,9 +1,11 @@
 import * as React from 'react'
 import { entregaInputSchema, type EntregaInput } from '../schemas'
+import arrowLeft from '../../../../icons/arrow-left (1).svg'
 
 type TipoEntrega = 'cliente_final' | 'transporte_tercerizado'
 
 export type EntregaFormProps = {
+  onVolverFicha: () => void
   onCancelar: () => void
   onGuardar: (input: EntregaInput) => void
   pending: boolean
@@ -15,7 +17,13 @@ export type EntregaFormProps = {
  * En esta primera iteración solo define la superficie y los campos;
  * el guardado se conectará después a Zod y a la Server Function.
  */
-export function EntregaForm({ onCancelar, onGuardar, pending, errorDeServidor }: EntregaFormProps) {
+export function EntregaForm({
+  onVolverFicha,
+  onCancelar,
+  onGuardar,
+  pending,
+  errorDeServidor,
+}: EntregaFormProps) {
   const [tipo, setTipo] = React.useState<TipoEntrega | null>(null)
   const [error, setError] = React.useState<string | null>(null)
 
@@ -58,8 +66,14 @@ export function EntregaForm({ onCancelar, onGuardar, pending, errorDeServidor }:
 
   return (
     <form className="entrega-form" onSubmit={handleSubmit}>
-      <button type="button" className="btn-ghost ficha-atras" onClick={onCancelar}>
-        Volver a la ficha
+      <button
+        type="button"
+        className="btn-ghost ficha-atras"
+        aria-label="Volver a la ficha del despacho"
+        title="Volver a la ficha"
+        onClick={onVolverFicha}
+      >
+        <img src={arrowLeft} alt="" aria-hidden="true" />
       </button>
 
       <div className="entrega-form-titulo">
