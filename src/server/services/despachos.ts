@@ -8,6 +8,7 @@ import {
   type DespachoUpdateValues,
   type ListadoDespachosInput,
   type PaginaDespachosRow,
+  type EntregaInsertValues,
 } from '~/features/despachos/schemas'
 import {
   parseDespachoConBultos,
@@ -29,7 +30,7 @@ type Db = SupabaseClient
 
 /** SELECT con los bultos embebidos: PostgREST resuelve la FK por el nombre.
  *  Alias "bultos_detalle" para no chocar con la columna "bultos" del despacho. */
-const CON_BULTOS = '*, bultos_detalle:despacho_bultos(numero, peso_kg)'
+const CON_BULTOS = '*, bultos_detalle:despacho_bultos(numero, peso_kg), entrega:entregas(*)'
 
 /** Columnas que escanea el texto libre ?q= — los mismos campos del search client-side. */
 const COLUMNAS_Q = [
@@ -121,6 +122,33 @@ export async function insertBultos(
   const { error } = await db.from('despacho_bultos').insert(filas)
 
   if (error) throw new Error(`No se pudieron registrar los bultos: ${error.message}`)
+}
+
+/** Verificación de defensa en profundidad antes de insertar una entrega. */
+export async function despachoPropio(db: Db, userId: string, despachoId: string): Promise<boolean> {
+  const { data, error } = await db
+    .from('despachos')
+    .select('id')
+    .eq('id', despachoId)
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (error) throw new Error(`No se pudo verificar el despacho: ${error.message}`)
+  return data !== null
+}
+
+export async function insertEntrega(
+  db: Db,
+  values: EntregaInsertValues,
+): Promise<{ id: string; despacho_id: string }> {
+  const { data, error } = await db
+    .from('entregas')
+    .insert(values)
+    .select('id, despacho_id')
+    .single()
+
+  if (error) throw new Error(`No se pudo registrar la entrega: ${error.message}`)
+  return data
 }
 
 export async function deleteBultos(db: Db, despachoId: string): Promise<void> {

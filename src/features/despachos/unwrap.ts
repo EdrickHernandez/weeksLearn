@@ -1,4 +1,4 @@
-import type { DespachoResult, ServiceError } from './schemas'
+import type { DespachoResult, EntregaResult, ServiceError } from './schemas'
 
 /**
  * Error tipado del cliente de datos: expone .status para que los defaults
@@ -18,6 +18,11 @@ export class DespachoApiError extends Error {
 
 /** Convierte el resultado tipado de las Server Functions en data o throw. */
 export function unwrapDespachoResult<T>(result: DespachoResult<T>): T {
+  if (result.ok) return result.data
+  throw new DespachoApiError(result.error)
+}
+
+export function unwrapEntregaResult<T>(result: EntregaResult<T>): T {
   if (result.ok) return result.data
   throw new DespachoApiError(result.error)
 }

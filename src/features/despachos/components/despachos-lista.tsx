@@ -36,6 +36,7 @@ export function DespachosLista({ despachos, onAbrirFicha }: DespachosListaProps)
           <span>Bultos</span>
           <span>Peso</span>
           <span>Retiró</span>
+          <span>Estado</span>
         </div>
 
         {despachos.map((despacho) => (
@@ -60,7 +61,7 @@ function DespachoFilaHistorica({ despacho, onAbrirFicha }: DespachoFilaHistorica
 
   return (
     <article
-      className="fila-despacho"
+      className={`fila-despacho${despacho.entregado ? ' fila-entregada' : ''}`}
       role="button"
       tabIndex={0}
       title="Abrir ficha del despacho"
@@ -101,6 +102,9 @@ function DespachoFilaHistorica({ despacho, onAbrirFicha }: DespachoFilaHistorica
       </span>
       <span className="trunc" title={despacho.retiradoPor ?? undefined}>
         {despacho.retiradoPor ?? '—'}
+      </span>
+      <span className={`estado-entrega${despacho.entregado ? ' entregado' : ''}`}>
+        {despacho.entregado ? 'Entregado' : '—'}
       </span>
     </article>
   )
