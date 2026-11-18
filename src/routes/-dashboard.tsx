@@ -438,6 +438,7 @@ export function DashboardPage() {
 
         {ficha && ficha.modo === 'entrega' ? (
           <EntregaForm
+            onVolverFicha={() => setFicha({ ...ficha, modo: 'ver' })}
             onCancelar={cerrarFicha}
             onGuardar={handleGuardarEntrega}
             pending={crearEntrega.isPending}
