@@ -209,6 +209,7 @@ export function DashboardPage() {
           errorDeServidor={errorDeServidor}
           onGuardar={handleGuardar}
           onCancelar={() => setForm({ modo: 'cerrado' })}
+          mostrarAtras
         />
       ) : (
         <>
