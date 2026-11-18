@@ -56,9 +56,9 @@ export function BuscadorFiltros({ filtros, onCambiar, onLimpiar }: BuscadorFiltr
     setErrorRango(null)
   }
 
-  function validarYRango() {
-    const soloDesde = Boolean(desde) && !hasta
-    const soloHasta = !desde && Boolean(hasta)
+  function validarYRango(proximoDesde: string, proximoHasta: string) {
+    const soloDesde = Boolean(proximoDesde) && !proximoHasta
+    const soloHasta = !proximoDesde && Boolean(proximoHasta)
 
     if (soloDesde || soloHasta) {
       setErrorRango('Selecciona las fechas Desde y Hasta')
@@ -66,7 +66,7 @@ export function BuscadorFiltros({ filtros, onCambiar, onLimpiar }: BuscadorFiltr
     }
 
     setErrorRango(null)
-    onCambiar({ desde: desde || undefined, hasta: hasta || undefined })
+    onCambiar({ desde: proximoDesde || undefined, hasta: proximoHasta || undefined })
   }
 
   // Commit con debounce: el timer siempre dispara contra el callback vigente.
@@ -103,8 +103,11 @@ export function BuscadorFiltros({ filtros, onCambiar, onLimpiar }: BuscadorFiltr
           <input
             type="date"
             value={desde}
-            onChange={(e) => setDesde(e.target.value)}
-            onBlur={validarYRango}
+            onChange={(e) => {
+              const valor = e.target.value
+              setDesde(valor)
+              validarYRango(valor, hasta)
+            }}
             aria-label="Fecha de despacho desde"
           />
           {errorRango ? <span className="field-error">{errorRango}</span> : null}
@@ -115,8 +118,11 @@ export function BuscadorFiltros({ filtros, onCambiar, onLimpiar }: BuscadorFiltr
           <input
             type="date"
             value={hasta}
-            onChange={(e) => setHasta(e.target.value)}
-            onBlur={validarYRango}
+            onChange={(e) => {
+              const valor = e.target.value
+              setHasta(valor)
+              validarYRango(desde, valor)
+            }}
             aria-label="Fecha de despacho hasta"
           />
         </label>
