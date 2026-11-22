@@ -34,12 +34,39 @@ export type BuscadorFiltrosProps = {
 export function BuscadorFiltros({ filtros, onCambiar, onLimpiar }: BuscadorFiltrosProps) {
   const [q, setQ] = React.useState(filtros.q ?? '')
   const [qUrlPrevio, setQUrlPrevio] = React.useState(filtros.q ?? '')
+  const [desde, setDesde] = React.useState(filtros.desde ?? '')
+  const [hasta, setHasta] = React.useState(filtros.hasta ?? '')
+  const [rangoUrlPrevio, setRangoUrlPrevio] = React.useState(
+    `${filtros.desde ?? ''}|${filtros.hasta ?? ''}`,
+  )
+  const [errorRango, setErrorRango] = React.useState<string | null>(null)
 
   // Ajuste durante render cuando cambia el dueño externo (URL/back/forward,
   // enlace compartido o Limpiar), evitando un render atrasado vía effect.
   if (qUrlPrevio !== (filtros.q ?? '')) {
     setQUrlPrevio(filtros.q ?? '')
     setQ(filtros.q ?? '')
+  }
+
+  const rangoUrl = `${filtros.desde ?? ''}|${filtros.hasta ?? ''}`
+  if (rangoUrlPrevio !== rangoUrl) {
+    setRangoUrlPrevio(rangoUrl)
+    setDesde(filtros.desde ?? '')
+    setHasta(filtros.hasta ?? '')
+    setErrorRango(null)
+  }
+
+  function validarYRango(proximoDesde: string, proximoHasta: string) {
+    const soloDesde = Boolean(proximoDesde) && !proximoHasta
+    const soloHasta = !proximoDesde && Boolean(proximoHasta)
+
+    if (soloDesde || soloHasta) {
+      setErrorRango('Selecciona las fechas Desde y Hasta')
+      return
+    }
+
+    setErrorRango(null)
+    onCambiar({ desde: proximoDesde || undefined, hasta: proximoHasta || undefined })
   }
 
   // Commit con debounce: el timer siempre dispara contra el callback vigente.
@@ -75,18 +102,27 @@ export function BuscadorFiltros({ filtros, onCambiar, onLimpiar }: BuscadorFiltr
           Desde
           <input
             type="date"
-            value={filtros.desde ?? ''}
-            onChange={(e) => onCambiar({ desde: e.target.value || undefined })}
+            value={desde}
+            onChange={(e) => {
+              const valor = e.target.value
+              setDesde(valor)
+              validarYRango(valor, hasta)
+            }}
             aria-label="Fecha de despacho desde"
           />
+          {errorRango ? <span className="field-error">{errorRango}</span> : null}
         </label>
 
         <label>
           Hasta
           <input
             type="date"
-            value={filtros.hasta ?? ''}
-            onChange={(e) => onCambiar({ hasta: e.target.value || undefined })}
+            value={hasta}
+            onChange={(e) => {
+              const valor = e.target.value
+              setHasta(valor)
+              validarYRango(desde, valor)
+            }}
             aria-label="Fecha de despacho hasta"
           />
         </label>

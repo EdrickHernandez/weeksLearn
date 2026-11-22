@@ -549,6 +549,11 @@ dialog.ficha::backdrop {
   margin: 0 0 var(--esp-2);
 }
 
+.ficha-atras img {
+  width: 24px;
+  height: 24px;
+}
+
 .fila-doc {
   font-family: var(--fuente-datos);
   font-weight: 600;

@@ -31,6 +31,7 @@ import {
   sumValorClp,
 } from '~/features/despachos/service'
 import { Route } from './index'
+import arrowLeft from '../../icons/arrow-left (1).svg'
 
 type ModoForm = { modo: 'cerrado' } | { modo: 'crear' }
 
@@ -208,6 +209,7 @@ export function DashboardPage() {
           errorDeServidor={errorDeServidor}
           onGuardar={handleGuardar}
           onCancelar={() => setForm({ modo: 'cerrado' })}
+          mostrarAtras
         />
       ) : (
         <>
@@ -384,7 +386,12 @@ export function DashboardPage() {
         onClick={(e) => {
           // Click en el backdrop: el evento aterriza en el propio <dialog>
           // (el ::backdrop no es un elemento), no en su contenido.
-          if (e.target === refDialog.current) cerrarFicha()
+          if (e.target === refDialog.current && ficha?.modo === 'ver') cerrarFicha()
+        }}
+        onCancel={(e) => {
+          // Escape cierra la ficha de lectura, pero no puede descartar un
+          // formulario que tenga cambios potencialmente no guardados.
+          if (ficha?.modo !== 'ver') e.preventDefault()
         }}
         onClose={() => setFicha(null)}
       >
@@ -403,11 +410,9 @@ export function DashboardPage() {
         {ficha && ficha.modo === 'editar' ? (
           <>
             {/* Navegación del dialog: Atrás vuelve a la ficha de lectura.
-                SVG inline con currentColor (pinta del color del texto):
-                sin librería de íconos por UN glifo. Botón solo-ícono →
-                necesita nombre accesible (aria-label). Además el cierre
-                del form está apagado (mostrarCancelar=false) para no
-                duplicar salidas. */}
+                Botón solo-ícono → necesita nombre accesible (aria-label).
+                Además Cancelar abandona el diálogo completo; la flecha solo
+                vuelve a la ficha de lectura. */}
             <button
               type="button"
               className="btn-ghost ficha-atras"
@@ -415,19 +420,7 @@ export function DashboardPage() {
               title="Volver a la ficha"
               onClick={() => setFicha({ ...ficha, modo: 'ver' })}
             >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M19 12H5M12 19l-7-7 7-7" />
-              </svg>
+              <img src={arrowLeft} alt="" aria-hidden="true" />
             </button>
             <DespachoForm
               despacho={ficha.despacho}
@@ -437,15 +430,16 @@ export function DashboardPage() {
               onGuardar={(input) =>
                 actualizar.mutate({ ...input, id: ficha.despacho.id }, { onSuccess: cerrarFicha })
               }
-              onCancelar={() => setFicha({ ...ficha, modo: 'ver' })}
-              mostrarCancelar={false}
+              onCancelar={cerrarFicha}
+              mostrarCancelar
             />
           </>
         ) : null}
 
         {ficha && ficha.modo === 'entrega' ? (
           <EntregaForm
-            onCancelar={() => setFicha({ ...ficha, modo: 'ver' })}
+            onVolverFicha={() => setFicha({ ...ficha, modo: 'ver' })}
+            onCancelar={cerrarFicha}
             onGuardar={handleGuardarEntrega}
             pending={crearEntrega.isPending}
             errorDeServidor={crearEntrega.error ? mensajeDeError(crearEntrega.error) : null}
