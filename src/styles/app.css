@@ -146,9 +146,18 @@ select {
 .seleccion-exportacion-acciones {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: var(--esp-3);
   margin: var(--esp-3) 0;
+}
+
+.seleccion-exportacion-resumen {
+  min-width: 0;
+  flex: 1;
+}
+
+.seleccion-exportacion-resumen p {
+  margin: 0;
 }
 
 .seleccion-exportacion-cuerpo {

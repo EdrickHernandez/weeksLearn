@@ -309,21 +309,30 @@ export function DashboardPage() {
             </SeleccionExportacion>
           ) : (
             <section className="busqueda" aria-label="Buscar en el historial">
-              <p className="muted" aria-live="polite">
-                {total > despachos.length
-                  ? `Mostrando ${despachos.length} de ${total} despachos${isFetching ? '…' : ''}`
-                  : `${total === 1 ? '1 despacho' : `${total} despachos`}`}
-              </p>
-
               {despachos.length === 0 ? (
-                <p className="card" role="status">
-                  Sin resultados para tu búsqueda — revisa los filtros o limpia y prueba de nuevo.
-                </p>
+                <>
+                  <p className="muted" aria-live="polite">
+                    0 despachos
+                  </p>
+                  <p className="card" role="status">
+                    Sin resultados para tu búsqueda — revisa los filtros o limpia y prueba de nuevo.
+                  </p>
+                </>
               ) : (
                 /* El filtrado y la paginación corren en PostgreSQL:
                      la lista muestra la página ?pagina=N, del más reciente
                      al más antiguo. La fila entera abre la ficha. */
-                <SeleccionExportacion despachos={despachos} onExportar={exportarSeleccionados}>
+                <SeleccionExportacion
+                  despachos={despachos}
+                  onExportar={exportarSeleccionados}
+                  resumen={
+                    <p className="muted" aria-live="polite">
+                      {total > despachos.length
+                        ? `Mostrando ${despachos.length} de ${total} despachos${isFetching ? '…' : ''}`
+                        : `${total === 1 ? '1 despacho' : `${total} despachos`}`}
+                    </p>
+                  }
+                >
                   <DespachosLista despachos={despachos} onAbrirFicha={abrirFicha} />
                 </SeleccionExportacion>
               )}
