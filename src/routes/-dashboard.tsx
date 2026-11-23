@@ -20,6 +20,7 @@ import { DespachoFicha } from '~/features/despachos/components/despacho-ficha'
 import { EntregaForm } from '~/features/despachos/components/entrega-form'
 import { DespachoFila } from '~/features/despachos/components/despacho-fila'
 import { DespachosLista } from '~/features/despachos/components/despachos-lista'
+import { SeleccionExportacion } from '~/features/despachos/components/seleccion-exportacion'
 import { useDespachosQuery } from '~/features/despachos/queries/use-despachos'
 import { exportarFiltro, exportarJornada } from '~/features/despachos/exportar-jornada'
 import {
@@ -187,6 +188,12 @@ export function DashboardPage() {
     void navigate({ search: {}, replace: true })
   }
 
+  function exportarSeleccionados(ids: readonly string[]) {
+    const despachosVisibles = hayFiltros ? despachos : delDia
+    const seleccionados = despachosVisibles.filter(({ id }) => ids.includes(id))
+    void (hayFiltros ? exportarFiltro(seleccionados, ahora) : exportarJornada(seleccionados, ahora))
+  }
+
   /**
    * Modelo de pantalla:
    * - Default → jornada: header + lista del día, sin filas cuando hay
@@ -225,26 +232,6 @@ export function DashboardPage() {
               </p>
             </div>
             <div className="jornada-acciones">
-              {/* Exporta lo que hay en pantalla: la jornada si no hay
-                  filtros, el resultado filtrado si los hay (nombre con
-                  sufijo -filtro para no confundir los archivos). */}
-              {(hayFiltros ? despachos.length > 0 : delDia.length > 0) && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    void (hayFiltros
-                      ? exportarFiltro(despachos, ahora)
-                      : exportarJornada(delDia, ahora))
-                  }
-                  title={
-                    hayFiltros
-                      ? 'Descarga el Excel de los despachos filtrados'
-                      : 'Descarga el Excel de la jornada de hoy'
-                  }
-                >
-                  Exportar
-                </button>
-              )}
               {/* El panel vive fuera de este <header> (desplegable de la
                   jornada); el id lo ancora para aria-expanded/controls. */}
               <button
@@ -295,11 +282,9 @@ export function DashboardPage() {
             <p className="card" role="status">
               Cargando despachos…
             </p>
-          ) : (
-            <>
-              {/* La jornada vive en la pantalla principal y desaparece al
-                  filtrar: el operador está buscando el historial, no el hoy. */}
-              {!hayFiltros && delDia.length > 0 ? (
+          ) : !hayFiltros ? (
+            <SeleccionExportacion despachos={delDia} onExportar={exportarSeleccionados}>
+              {delDia.length > 0 ? (
                 <section className="jornada-lista" aria-label="Despachos de hoy">
                   {/* Cabecera visual de columnas (solo guía al ojo): los
                       lectores de pantalla obtienen el contenido de las celdas,
@@ -321,58 +306,50 @@ export function DashboardPage() {
                   ))}
                 </section>
               ) : null}
+            </SeleccionExportacion>
+          ) : (
+            <section className="busqueda" aria-label="Buscar en el historial">
+              <p className="muted" aria-live="polite">
+                {total > despachos.length
+                  ? `Mostrando ${despachos.length} de ${total} despachos${isFetching ? '…' : ''}`
+                  : `${total === 1 ? '1 despacho' : `${total} despachos`}`}
+              </p>
 
-              <section className="busqueda" aria-label="Buscar en el historial">
-                {hayFiltros ? (
-                  <>
-                    <p className="muted" aria-live="polite">
-                      {total > despachos.length
-                        ? `Mostrando ${despachos.length} de ${total} despachos${isFetching ? '…' : ''}`
-                        : `${total === 1 ? '1 despacho' : `${total} despachos`}`}
-                    </p>
+              {despachos.length === 0 ? (
+                <p className="card" role="status">
+                  Sin resultados para tu búsqueda — revisa los filtros o limpia y prueba de nuevo.
+                </p>
+              ) : (
+                /* El filtrado y la paginación corren en PostgreSQL:
+                     la lista muestra la página ?pagina=N, del más reciente
+                     al más antiguo. La fila entera abre la ficha. */
+                <SeleccionExportacion despachos={despachos} onExportar={exportarSeleccionados}>
+                  <DespachosLista despachos={despachos} onAbrirFicha={abrirFicha} />
+                </SeleccionExportacion>
+              )}
 
-                    {despachos.length === 0 ? (
-                      <p className="card" role="status">
-                        Sin resultados para tu búsqueda — revisa los filtros o limpia y prueba de
-                        nuevo.
-                      </p>
-                    ) : (
-                      /* El filtrado y la paginación corren en PostgreSQL:
-                         la lista muestra la página ?pagina=N, del más
-                         reciente al más antiguo. La fila entera abre la
-                         ficha — Editar/Eliminar viven en la ficha. */
-                      <DespachosLista despachos={despachos} onAbrirFicha={abrirFicha} />
-                    )}
-
-                    {/* Paginación por offset en la URL (?pagina=N): FUERA de
-                        la rama de resultados — una página fuera de rango
-                        (URL forjada o filtros cambiados a mano) muestra la
-                        lista vacía PERO conserva el paginador para escapar. */}
-                    {total > porPagina || paginaActual > 1 ? (
-                      <div className="paginacion" role="navigation" aria-label="Paginación">
-                        <button
-                          type="button"
-                          onClick={() => cambiarPagina(paginaActual - 1)}
-                          disabled={paginaActual <= 1 || isFetching}
-                        >
-                          Anterior
-                        </button>
-                        <span className="muted" aria-live="polite">
-                          Página {paginaActual} de {totalPaginas}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => cambiarPagina(paginaActual + 1)}
-                          disabled={paginaActual >= totalPaginas || isFetching}
-                        >
-                          Siguiente
-                        </button>
-                      </div>
-                    ) : null}
-                  </>
-                ) : null}
-              </section>
-            </>
+              {total > porPagina || paginaActual > 1 ? (
+                <div className="paginacion" role="navigation" aria-label="Paginación">
+                  <button
+                    type="button"
+                    onClick={() => cambiarPagina(paginaActual - 1)}
+                    disabled={paginaActual <= 1 || isFetching}
+                  >
+                    Anterior
+                  </button>
+                  <span className="muted" aria-live="polite">
+                    Página {paginaActual} de {totalPaginas}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => cambiarPagina(paginaActual + 1)}
+                    disabled={paginaActual >= totalPaginas || isFetching}
+                  >
+                    Siguiente
+                  </button>
+                </div>
+              ) : null}
+            </section>
           )}
         </>
       )}
