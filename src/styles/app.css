@@ -192,6 +192,32 @@ select {
   min-width: 0;
 }
 
+.tabs-vistas {
+  display: flex;
+  gap: var(--esp-1);
+  margin: var(--esp-4) 0 var(--esp-3);
+  border-bottom: 1px solid var(--linea);
+}
+
+.tabs-vistas button {
+  border-color: transparent;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  background: transparent;
+}
+
+.tabs-vistas button:hover,
+.tabs-vistas button.activo {
+  background: var(--papel-hover);
+  border-color: var(--linea);
+  border-bottom-color: var(--papel-hover);
+}
+
+.personalizar-fechas {
+  align-self: end;
+  margin-bottom: var(--esp-1);
+}
+
 .status-error {
   color: var(--peligro);
 }

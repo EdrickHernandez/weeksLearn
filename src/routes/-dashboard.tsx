@@ -21,6 +21,7 @@ import { EntregaForm } from '~/features/despachos/components/entrega-form'
 import { DespachoFila } from '~/features/despachos/components/despacho-fila'
 import { DespachosLista } from '~/features/despachos/components/despachos-lista'
 import { SeleccionExportacion } from '~/features/despachos/components/seleccion-exportacion'
+import { TabsVistas } from '~/features/despachos/components/tabs-vistas'
 import { useDespachosQuery } from '~/features/despachos/queries/use-despachos'
 import { exportarFiltro, exportarJornada } from '~/features/despachos/exportar-jornada'
 import {
@@ -252,6 +253,8 @@ export function DashboardPage() {
               </button>
             </div>
           </header>
+
+          <TabsVistas filtros={filtros} ahora={ahora} onCambiar={cambiarFiltros} />
 
           {/* Despliegue condicional (monta/desmonta): cada apertura re-leerá
               los borradores desde la URL, sin estado residual. */}
