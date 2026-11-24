@@ -213,6 +213,36 @@ select {
   border-bottom-color: var(--papel-hover);
 }
 
+.tabs-vistas-dia {
+  display: flex;
+  align-items: center;
+  gap: var(--esp-2);
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radio);
+  background: transparent;
+  color: var(--tinta);
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-bottom-color: transparent;
+}
+
+.tabs-vistas-dia.activo {
+  border-color: var(--linea);
+  border-bottom-color: var(--papel-hover);
+  background: var(--papel-hover);
+}
+
+.tabs-vistas-dia input {
+  width: auto;
+  max-width: none;
+  height: 2rem;
+  padding: 0 var(--esp-2);
+}
+
+.tabs-vistas-dia:hover {
+  background: var(--papel-hover);
+}
+
 .personalizar-fechas {
   align-self: end;
   margin-bottom: var(--esp-1);

@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { DespachoFiltrosUrl } from '../schemas'
@@ -46,6 +46,42 @@ describe('TabsVistas', () => {
       vista: undefined,
       desde: undefined,
       hasta: undefined,
+      pagina: undefined,
+    })
+  })
+
+  it('permite cambiar la fecha cuando Día está activo', () => {
+    const onCambiar = vi.fn()
+    render(
+      <TabsVistas
+        filtros={{ vista: 'dia', desde: '2026-11-18', hasta: '2026-11-18' }}
+        ahora={new Date(2026, 10, 18)}
+        onCambiar={onCambiar}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText('Fecha de la vista Día'), {
+      target: { value: '2026-11-12' },
+    })
+
+    expect(onCambiar).toHaveBeenLastCalledWith({
+      vista: 'dia',
+      desde: '2026-11-12',
+      hasta: '2026-11-12',
+      pagina: undefined,
+    })
+  })
+
+  it('activa Día al enfocar su selector de fecha', () => {
+    const onCambiar = vi.fn()
+    render(<TabsVistas filtros={{}} ahora={new Date(2026, 10, 18)} onCambiar={onCambiar} />)
+
+    fireEvent.focus(screen.getByLabelText('Fecha de la vista Día'))
+
+    expect(onCambiar).toHaveBeenCalledWith({
+      vista: 'dia',
+      desde: '2026-11-18',
+      hasta: '2026-11-18',
       pagina: undefined,
     })
   })

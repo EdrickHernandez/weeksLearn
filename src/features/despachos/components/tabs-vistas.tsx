@@ -52,6 +52,9 @@ function rangoDe(vista: Exclude<VistaTemporal, 'general'>, ahora: Date) {
 }
 
 export function TabsVistas({ filtros, ahora, onCambiar }: TabsVistasProps) {
+  const diaActivo = filtros.vista === 'dia'
+  const fechaDia = diaActivo ? (filtros.desde ?? fechaTexto(ahora)) : fechaTexto(ahora)
+
   function seleccionar(vista: VistaTemporal) {
     if (vista === 'general') {
       onCambiar({ vista: undefined, desde: undefined, hasta: undefined, pagina: undefined })
@@ -61,6 +64,11 @@ export function TabsVistas({ filtros, ahora, onCambiar }: TabsVistasProps) {
     onCambiar({ vista, ...rangoDe(vista, ahora), pagina: undefined })
   }
 
+  function cambiarDia(fecha: string) {
+    if (!fecha) return
+    onCambiar({ vista: 'dia', desde: fecha, hasta: fecha, pagina: undefined })
+  }
+
   return (
     <nav className="tabs-vistas" aria-label="Rango temporal">
       {OPCIONES.map(({ valor, etiqueta }) => {
@@ -68,6 +76,27 @@ export function TabsVistas({ filtros, ahora, onCambiar }: TabsVistasProps) {
           valor === 'general'
             ? !filtros.vista && !filtros.desde && !filtros.hasta
             : filtros.vista === valor
+
+        if (valor === 'dia') {
+          return (
+            <label
+              className={`tabs-vistas-dia${activo ? ' activo' : ''}`}
+              aria-current={activo ? 'page' : undefined}
+              key={valor}
+            >
+              <span>{etiqueta}</span>
+              <input
+                type="date"
+                value={fechaDia}
+                onFocus={() => {
+                  if (!diaActivo) seleccionar('dia')
+                }}
+                onChange={(evento) => cambiarDia(evento.target.value)}
+                aria-label="Fecha de la vista Día"
+              />
+            </label>
+          )
+        }
 
         return (
           <button
