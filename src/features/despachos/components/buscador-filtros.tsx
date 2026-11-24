@@ -32,6 +32,7 @@ export type BuscadorFiltrosProps = {
  *   o Limpiar escriben la URL y el borrador se alinea).
  */
 export function BuscadorFiltros({ filtros, onCambiar, onLimpiar }: BuscadorFiltrosProps) {
+  const fechasControladasPorVista = Boolean(filtros.vista)
   const [q, setQ] = React.useState(filtros.q ?? '')
   const [qUrlPrevio, setQUrlPrevio] = React.useState(filtros.q ?? '')
   const [desde, setDesde] = React.useState(filtros.desde ?? '')
@@ -103,6 +104,7 @@ export function BuscadorFiltros({ filtros, onCambiar, onLimpiar }: BuscadorFiltr
           <input
             type="date"
             value={desde}
+            disabled={fechasControladasPorVista}
             onChange={(e) => {
               const valor = e.target.value
               setDesde(valor)
@@ -118,6 +120,7 @@ export function BuscadorFiltros({ filtros, onCambiar, onLimpiar }: BuscadorFiltr
           <input
             type="date"
             value={hasta}
+            disabled={fechasControladasPorVista}
             onChange={(e) => {
               const valor = e.target.value
               setHasta(valor)
@@ -126,6 +129,16 @@ export function BuscadorFiltros({ filtros, onCambiar, onLimpiar }: BuscadorFiltr
             aria-label="Fecha de despacho hasta"
           />
         </label>
+
+        {fechasControladasPorVista ? (
+          <button
+            type="button"
+            className="btn-ghost personalizar-fechas"
+            onClick={() => onCambiar({ vista: undefined })}
+          >
+            Personalizar fechas
+          </button>
+        ) : null}
 
         <label>
           Doc.

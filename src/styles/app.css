@@ -146,9 +146,18 @@ select {
 .seleccion-exportacion-acciones {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: var(--esp-3);
   margin: var(--esp-3) 0;
+}
+
+.seleccion-exportacion-resumen {
+  min-width: 0;
+  flex: 1;
+}
+
+.seleccion-exportacion-resumen p {
+  margin: 0;
 }
 
 .seleccion-exportacion-cuerpo {
@@ -181,6 +190,62 @@ select {
 
 .seleccion-exportacion-lista {
   min-width: 0;
+}
+
+.tabs-vistas {
+  display: flex;
+  gap: var(--esp-1);
+  margin: var(--esp-4) 0 var(--esp-3);
+  border-bottom: 1px solid var(--linea);
+}
+
+.tabs-vistas button {
+  border-color: transparent;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  background: transparent;
+}
+
+.tabs-vistas button:hover,
+.tabs-vistas button.activo {
+  background: var(--papel-hover);
+  border-color: var(--linea);
+  border-bottom-color: var(--papel-hover);
+}
+
+.tabs-vistas-dia {
+  display: flex;
+  align-items: center;
+  gap: var(--esp-2);
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radio);
+  background: transparent;
+  color: var(--tinta);
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-bottom-color: transparent;
+}
+
+.tabs-vistas-dia.activo {
+  border-color: var(--linea);
+  border-bottom-color: var(--papel-hover);
+  background: var(--papel-hover);
+}
+
+.tabs-vistas-dia input {
+  width: auto;
+  max-width: none;
+  height: 2rem;
+  padding: 0 var(--esp-2);
+}
+
+.tabs-vistas-dia:hover {
+  background: var(--papel-hover);
+}
+
+.personalizar-fechas {
+  align-self: end;
+  margin-bottom: var(--esp-1);
 }
 
 .status-error {

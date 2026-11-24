@@ -385,16 +385,27 @@ export const filtroPorPaginaUrl = z.preprocess(
     .catch(undefined),
 )
 
-export const despachoFiltrosUrlSchema = z.object({
-  q: filtroTextoUrl(120),
-  desde: filtroFechaUrl,
-  hasta: filtroFechaUrl,
-  tipoDocumento: tipoDocumentoSchema.optional(),
-  transporte: filtroTextoUrl(80),
-  comuna: filtroTextoUrl(60),
-  pagina: filtroPaginaUrl,
-  porPagina: filtroPorPaginaUrl,
-})
+export const despachoFiltrosUrlSchema = z
+  .object({
+    q: filtroTextoUrl(120),
+    vista: z.enum(['anio', 'mes', 'semana', 'dia']).optional(),
+    desde: filtroFechaUrl,
+    hasta: filtroFechaUrl,
+    tipoDocumento: tipoDocumentoSchema.optional(),
+    transporte: filtroTextoUrl(80),
+    comuna: filtroTextoUrl(60),
+    pagina: filtroPaginaUrl,
+    porPagina: filtroPorPaginaUrl,
+  })
+  .superRefine((filtros, contexto) => {
+    if (filtros.vista && (!filtros.desde || !filtros.hasta)) {
+      contexto.addIssue({
+        code: 'custom',
+        path: ['vista'],
+        message: 'Una vista temporal necesita un rango completo',
+      })
+    }
+  })
 
 export type DespachoFiltrosUrl = z.infer<typeof despachoFiltrosUrlSchema>
 

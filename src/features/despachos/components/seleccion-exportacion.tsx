@@ -4,6 +4,7 @@ import type { Despacho } from '../schemas'
 export type SeleccionExportacionProps = {
   despachos: readonly Despacho[]
   onExportar: (ids: readonly string[]) => void
+  resumen?: React.ReactNode
   children: React.ReactNode
 }
 
@@ -17,6 +18,7 @@ const IDS_VACIOS = new Set<string>()
 export function SeleccionExportacion({
   despachos,
   onExportar,
+  resumen,
   children,
 }: SeleccionExportacionProps) {
   const [modoSeleccion, setModoSeleccion] = React.useState(false)
@@ -67,6 +69,7 @@ export function SeleccionExportacion({
   return (
     <section className="seleccion-exportacion" aria-label="Selección para exportar">
       <div className="seleccion-exportacion-acciones">
+        <div className="seleccion-exportacion-resumen">{resumen}</div>
         {!modoSeleccion ? (
           <button type="button" onClick={() => setModoSeleccion(true)}>
             Marcar para exportar
